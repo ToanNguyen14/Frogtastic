@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "374661404724",
+    "project_id": "frogtastic-af8af",
+    "storage_bucket": "frogtastic-af8af.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:374661404724:android:b5e08dc59df17e527b9261",
+        "android_client_info": {
+          "package_name": "com.Frogtastic.toannguyenkhanh"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "374661404724-6ceth0cjqul346vq5co40b802ak36lup.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz7o41OVLd_niDZ5l8QIdKi32lZ70NyOw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "374661404724-6ceth0cjqul346vq5co40b802ak36lup.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
