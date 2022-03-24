@@ -1,4 +1,4 @@
-package com.ads;
+package com.Frogtastic.toannguyenkhanh;
 
 import com.facebook.react.ReactActivity;
 

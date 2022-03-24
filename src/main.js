@@ -26,7 +26,7 @@ export default function Main() {
                     domStorageEnabled={true}
                 />
                 <BannerAd
-                    unitId={TestIds.BANNER}
+                    unitId='ca-app-pub-5425858352547326/5541120611'
                     size={BannerAdSize.SMART_BANNER}
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,

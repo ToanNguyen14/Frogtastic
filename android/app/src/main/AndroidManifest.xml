@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.ads">
+  package="com.Frogtastic.toannguyenkhanh">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
