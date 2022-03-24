@@ -6,13 +6,28 @@ export default function Main() {
     if (Platform.OS === 'ios') {
         var urlios = require("../assets/index.html");
         return (
-            <WebView
-                style={{ flex: 1 }}
-                originWhitelist={['*']}
-                source={urlios}
-                javaScriptEnabled={true}
-                domStorageEnabled={true}
-            />
+            <>
+                <WebView
+                    style={{ flex: 1 }}
+                    originWhitelist={['*']}
+                    source={urlios}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                />
+                <BannerAd
+                    unitId='ca-app-pub-5425858352547326/5541120611'
+                    size={BannerAdSize.FULL_BANNER}
+                    requestOptions={{
+                        requestNonPersonalizedAdsOnly: true,
+                    }}
+                    onAdLoaded={() => {
+                        console.log('Advert loaded');
+                    }}
+                    onAdFailedToLoad={(error) => {
+                        console.error('Advert failed to load: ', error);
+                    }}
+                />
+            </>
         );
     }
     else {
@@ -27,7 +42,7 @@ export default function Main() {
                 />
                 <BannerAd
                     unitId='ca-app-pub-5425858352547326/5541120611'
-                    size={BannerAdSize.SMART_BANNER}
+                    size={BannerAdSize.FULL_BANNER}
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,
                     }}
