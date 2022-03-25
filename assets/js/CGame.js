@@ -1,806 +1,761 @@
-function CGame(oData,iLevel,iScore){
+function CGame(oData){
     var _bUpdate = false;
-    var _bCanShoot;
-    var _bCheckPushCollision;
-    var _bAttractBall;
-    var _iTotScore;
-    var _iCurLevelScore;
-    var _iMultiplierCombo;
-    var _iTotalBall;
-    var _iBallSpeed;
-    var _iGameState = -1;
-    var _iCurCombos;
-    var _iMaxCombos;
-    var _iIntervalID;
-    var _iLastId;
-    var _iBallColors;
+    var _bWinAssigned;
+    var _iState;
+    var _iBetMult;
     var _iTimeElaps;
-    var _iTimeElapsBee;
-    var _iTimeBeeSpawn;
-    var _iCurLevel;
-    var _aBalls;
-    var _aCurveMapData;
-    var _aBallShooted;
-    var _aBallCrushed;
-    var _aBallAttracted = null;
-    var _aBees;
-    var _aDaisies;
-    
-    var _oCurve = null;
-    var _oEndSprite = null;
-    var _oHero;
-    var _oHeroBg;
+    var _iFactor;
+    var _iFrameToStop;
+    var _iNumberExtracted;
+    var _iCasinoCash;
+    var _iCountLastNeighbors;
+    var _iHandCont;
+    var _aBetMultHistory;
+    var _aBetWinHistory;
+    var _aNumFicheHistory;
+    var _aNumExtractedHistory;
+    var _aEnlights;
+    var _aFichesToMove;
+    var _aRebetHistory;
+        
     var _oBg;
-    var _oFg;
+    var _oMySeat;
+    var _oPlaceHolder;
     var _oInterface;
-    var _oBallAttach;
-    var _oCurveAttach;
-    var _oExtraScoreAttach;
-    var _oBgAttach;
-    var _oFgAttach;
+    var _oTableController;
+    var _oAttachFiches;
+    var _oMsgBox;
+    var _oWheelTopAnim;
+    var _oWheelAnim;
+    var _oFinalBet;
+    var _oNeighborsPanel;
+    var _oGameOverPanel;
+    var _oBlock;
     
-    this._init = function(iLevel,iScore){
-        createjs.MotionGuidePlugin.install();
+    this._init = function(){
+        s_oTweenController = new CTweenController();
+        s_oGameSettings = new CRouletteSettings();
         
-        _iCurLevel = iLevel;
-        _iTotScore = iScore;
-        s_oBezier = new CBezier();
+        _oBg = createBitmap(s_oSpriteLibrary.getSprite('bg_game'));
+        s_oStage.addChild(_oBg);
         
-	_oBgAttach = new createjs.Container();
-        _oBg = createBitmap(s_oSpriteLibrary.getSprite(s_oLevelSettings.getBgForLevel(_iCurLevel)) );
-        _oBgAttach.addChild(_oBg);
-	s_oStage.addChild(_oBgAttach);
+        this._initEnlights();
+        
+        _oAttachFiches = new createjs.Container();
+        _oAttachFiches.x = 261;
+        _oAttachFiches.y = 264;
+        s_oStage.addChild(_oAttachFiches);
+        
+        _oTableController = new CTableController();
+        _oTableController.addEventListener(ON_SHOW_ENLIGHT,this._onShowEnlight);
+        _oTableController.addEventListener(ON_HIDE_ENLIGHT,this._onHideEnlight);
+        _oTableController.addEventListener(ON_SHOW_BET_ON_TABLE,this._onShowBetOnTable);
+        
+        _iCountLastNeighbors = 0;
+        _iHandCont = 0;
+        _iState=-1;
+        _iBetMult=37;
+        _aBetMultHistory=new Array();
+        _aBetWinHistory = new Array();
+        _aNumFicheHistory = new Array();
+        _aRebetHistory = new Array();
 
-	_oBg.cache(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        _oMySeat = new CSeat();
+
+        _oWheelTopAnim = new CWheelTopAnim(493,6);
+        _oWheelAnim = new CWheelAnim(0,0);
+        _oInterface = new CInterface();
+        
+        _oFinalBet = new CFinalBetPanel(160,569);
+        
+        _oNeighborsPanel  = new CNeighborsPanel(_oMySeat.getCredit());
+        
+        _oGameOverPanel = new CGameOver();
+        
+        _oMsgBox = new CMsgBox();
+		
+        var oGraphics = new createjs.Graphics().beginFill("rgba(0,0,0,0.01)").drawRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        _oBlock = new createjs.Shape(oGraphics);
+        _oBlock.on("click",function(){});
+        _oBlock.visible= false;
+        s_oStage.addChild(_oBlock);
+		
+        _aNumExtractedHistory=new Array();
+
+        _iTimeElaps=0;
+        this._onSitDown();
 	
-        var oSprite = s_oSpriteLibrary.getSprite("base_hero");
-        _oHeroBg = createBitmap(oSprite);
-        _oHeroBg.regX = oSprite.width/2;
-        _oHeroBg.regY = oSprite.height/2;
-        s_oStage.addChild(_oHeroBg);
-
-        _oHero = new CHero();
-
-        _oCurveAttach = new createjs.Container();
-        _oBallAttach = new createjs.Container();
-        _oExtraScoreAttach = new createjs.Container();
-	
-        s_oStage.addChild(_oCurveAttach);
-        s_oStage.addChild(_oBallAttach);
-	s_oStage.addChild(_oExtraScoreAttach);
-        
-        _oFgAttach = new createjs.Container();
-        s_oStage.addChild(_oFgAttach);
-        
-        _oFg = createBitmap(s_oSpriteLibrary.getSprite(s_oLevelSettings.getFgForLevel(_iCurLevel)) );
-        _oFgAttach.addChild(_oFg);
-
-        _oInterface = new CInterface(_iTotScore);
-
-        this.reset();
-
-        if(s_bMobile === false){
-            var oParent = this;
-            s_oStage.addEventListener("stagemousemove", function(evt){oParent._onMouseMove(evt.stageX,evt.stageY)});
-        }
-
         _bUpdate = true;
     };
     
     this.unload = function(){
-        _bUpdate = false;
-        clearInterval(_iIntervalID);
-
+        stopSound("wheel_sound");
+        
         _oInterface.unload();
-        _oHero.unload();
+        _oTableController.unload();
+        _oMsgBox.unload();
+        _oFinalBet.unload();
+        _oNeighborsPanel.unload();
+        _oGameOverPanel.unload();
+
         s_oStage.removeAllChildren();
     };
     
-    this.reset = function(){
-        _bCanShoot = true;
-        _bCheckPushCollision = false;
-        _bAttractBall = false;
-    
-        _iBallSpeed = s_oLevelSettings.getBallSpeedForLevel(_iCurLevel);
-        _iTotalBall = s_oLevelSettings.getBallNumberForLevel(_iCurLevel );
-        _iBallColors = s_oLevelSettings.getBallColorsForLevel(_iCurLevel);
-        BALL_ROLLING_IN = Math.floor(_iTotalBall * 0.33);
+    this._initEnlights = function(){
+        var oBmp;
+        _aEnlights = new Array();
         
-        _iCurCombos = 0;
-        _iMaxCombos = 1;
-        _iMultiplierCombo = 1;
+        /*********************NUMBER ENLIGHT*****************/
+        oBmp = new CEnlight(288,175,s_oSpriteLibrary.getSprite('enlight_bet0'),s_oStage);
+        _aEnlights["oEnlight_0"] = oBmp;
+        
+        oBmp = new CEnlight(318,244,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_1"] = oBmp;
+        
+        oBmp = new CEnlight(342,220,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_2"] = oBmp;
+        
+        oBmp = new CEnlight(368,198,s_oSpriteLibrary.getSprite('enlight_number3'),s_oStage);
+        _aEnlights["oEnlight_3"] = oBmp;
+        
+        oBmp = new CEnlight(341,262,s_oSpriteLibrary.getSprite('enlight_number4'),s_oStage);
+        _aEnlights["oEnlight_4"] = oBmp;
+        
+        oBmp = new CEnlight(367,238,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_5"] = oBmp;
+        
+        oBmp = new CEnlight(392,214,s_oSpriteLibrary.getSprite('enlight_number3'),s_oStage);
+        _aEnlights["oEnlight_6"] = oBmp;
+        
+        oBmp = new CEnlight(366,279,s_oSpriteLibrary.getSprite('enlight_number4'),s_oStage);
+        _aEnlights["oEnlight_7"] = oBmp;
+        
+        oBmp = new CEnlight(391,255,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_8"] = oBmp;
+        
+        oBmp = new CEnlight(416,231,s_oSpriteLibrary.getSprite('enlight_number3'),s_oStage);
+        _aEnlights["oEnlight_9"] = oBmp;
+        
+        oBmp = new CEnlight(390,297,s_oSpriteLibrary.getSprite('enlight_number4'),s_oStage);
+        _aEnlights["oEnlight_10"] = oBmp;
+        
+        oBmp = new CEnlight(415,273,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_11"] = oBmp;
+        
+        oBmp = new CEnlight(439,249,s_oSpriteLibrary.getSprite('enlight_number12'),s_oStage);
+        _aEnlights["oEnlight_12"] = oBmp;
+        
+        oBmp = new CEnlight(414,315,s_oSpriteLibrary.getSprite('enlight_number4'),s_oStage);
+        _aEnlights["oEnlight_13"] = oBmp;
+        
+        oBmp = new CEnlight(439,291,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_14"] = oBmp;
+        
+        oBmp = new CEnlight(464,266,s_oSpriteLibrary.getSprite('enlight_number12'),s_oStage);
+        _aEnlights["oEnlight_15"] = oBmp;
+        
+        oBmp = new CEnlight(439,333,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_16"] = oBmp;
+        
+        oBmp = new CEnlight(464,308,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_17"] = oBmp;
+        
+        oBmp = new CEnlight(488,283,s_oSpriteLibrary.getSprite('enlight_number1'),s_oStage);
+        _aEnlights["oEnlight_18"] = oBmp;
+        
+        oBmp = new CEnlight(466,351,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_19"] = oBmp;
+        
+        oBmp = new CEnlight(489,326,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_20"] = oBmp;
+        
+        oBmp = new CEnlight(513,301,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_21"] = oBmp;
+        
+        oBmp = new CEnlight(491,371,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_22"] = oBmp;
+        
+        oBmp = new CEnlight(515,344,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_23"] = oBmp;
+        
+        oBmp = new CEnlight(539,319,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_24"] = oBmp;
+        
+        oBmp = new CEnlight(516,389,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_25"] = oBmp;
+        
+        oBmp = new CEnlight(540,363,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_26"] = oBmp;
+        
+        oBmp = new CEnlight(564,338,s_oSpriteLibrary.getSprite('enlight_number16'),s_oStage);
+        _aEnlights["oEnlight_27"] = oBmp;
+        
+        oBmp = new CEnlight(542,408,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_28"] = oBmp;
+        
+        oBmp = new CEnlight(566,381,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_29"] = oBmp;
+        
+        oBmp = new CEnlight(590,356,s_oSpriteLibrary.getSprite('enlight_number30'),s_oStage);
+        _aEnlights["oEnlight_30"] = oBmp;
+        
+        oBmp = new CEnlight(568,428,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_31"] = oBmp;
+        
+        oBmp = new CEnlight(593,401,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_32"] = oBmp;
+        
+        oBmp = new CEnlight(617,376,s_oSpriteLibrary.getSprite('enlight_number30'),s_oStage);
+        _aEnlights["oEnlight_33"] = oBmp;
+        
+        oBmp = new CEnlight(596,448,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_34"] = oBmp;
+        
+        oBmp = new CEnlight(619,421,s_oSpriteLibrary.getSprite('enlight_number25'),s_oStage);
+        _aEnlights["oEnlight_35"] = oBmp;
+        
+        oBmp = new CEnlight(644,395,s_oSpriteLibrary.getSprite('enlight_number30'),s_oStage);
+        _aEnlights["oEnlight_36"] = oBmp;
+        
+        /*********************OTHER ENLIGHTS*****************/
+        oBmp = new CEnlight(624,470,s_oSpriteLibrary.getSprite('enlight_col'),s_oStage);
+        _aEnlights["oEnlight_col1"] = oBmp;
+        
+        oBmp = new CEnlight(649,442,s_oSpriteLibrary.getSprite('enlight_col'),s_oStage);
+        _aEnlights["oEnlight_col2"] = oBmp;
+        
+        oBmp = new CEnlight(672,415,s_oSpriteLibrary.getSprite('enlight_col'),s_oStage);
+        _aEnlights["oEnlight_col3"] = oBmp;
+        
+        oBmp = new CEnlight(280,268,s_oSpriteLibrary.getSprite('enlight_first_twelve'),s_oStage);
+        _aEnlights["oEnlight_first12"] = oBmp;
+        
+        oBmp = new CEnlight(377,340,s_oSpriteLibrary.getSprite('enlight_second_twelve'),s_oStage);
+        _aEnlights["oEnlight_second12"] = oBmp;
+        
+        oBmp = new CEnlight(477,416,s_oSpriteLibrary.getSprite('enlight_third_twelve'),s_oStage);
+        _aEnlights["oEnlight_third12"] = oBmp;
+        
+        oBmp = new CEnlight(241,305,s_oSpriteLibrary.getSprite('enlight_first18'),s_oStage);
+        _aEnlights["oEnlight_first18"] = oBmp;
+        
+        oBmp = new CEnlight(288,343,s_oSpriteLibrary.getSprite('enlight_first18'),s_oStage);
+        _aEnlights["oEnlight_even"] = oBmp;
+        
+        oBmp = new CEnlight(338,380,s_oSpriteLibrary.getSprite('enlight_black'),s_oStage);
+        _aEnlights["oEnlight_black"] = oBmp;
+        
+        oBmp = new CEnlight(389,419,s_oSpriteLibrary.getSprite('enlight_red'),s_oStage);
+        _aEnlights["oEnlight_red"] = oBmp;
+        
+        oBmp = new CEnlight(439,456,s_oSpriteLibrary.getSprite('enlight_odd'),s_oStage);
+        _aEnlights["oEnlight_odd"] = oBmp;
+        
+        oBmp = new CEnlight(492,498,s_oSpriteLibrary.getSprite('enlight_second18'),s_oStage);
+        _aEnlights["oEnlight_second18"] = oBmp;
+    };
+    
+    this._setState = function(iState){
+        _iState=iState;
+
+        switch(iState){
+            case STATE_GAME_WAITING_FOR_BET:{
+                _oInterface.enableBetFiches();
+                
+		_oBlock.visible= false;
+                break;
+            }
+        }
+    };
+    
+    this._resetTable = function(){
         _iTimeElaps = 0;
-        _iTimeElapsBee = 0;
-        _iTimeBeeSpawn = Math.floor(Math.random() * (MAX_TIME_SPAWN_BEE - MIN_TIME_SPAWN_BEE + 1)) + MIN_TIME_SPAWN_BEE;
-        _iCurLevelScore = 0;
-        _aBees = new Array();
-        this._initDaisies();
-      
-        var pHeroPos = s_oLevelSettings.getHeroPosForLevel(_iCurLevel);
-        _oHero.reset(pHeroPos,_iBallColors);
-        _oHeroBg.x = pHeroPos.x;
-        _oHeroBg.y = pHeroPos.y;
-        
-        if(_oCurve !== null){
-            _oCurveAttach.removeChild(_oCurve);
-            _oCurveAttach.removeChild(_oEndSprite);
-        }
-        this._initCurve();
-        this._initBall();
-        
-        _oInterface.refreshLevel(_iCurLevel);
-        $(s_oMain).trigger("start_level",_iCurLevel);
-    };
-	
-    this._normalize = function(v){
-            var len = this._length(v);
-            if (len > 0 ){
-                    return { x : (v.x/len), y : (v.y/len) }; 
-            }
-            return v;
-    };
+        _iBetMult=37;
+        _aBetMultHistory=new Array();
+        _aBetWinHistory = new Array();
+        _aNumFicheHistory = new Array();
 
-    this._length = function(v){
-            return Math.sqrt( v.x*v.x+v.y*v.y );
-    };
-
-    this._dotProductV2 = function(v1,v2){
-            return ( v1.x*v2.x+ v1.y*v2.y );
-    };
-
-    this._angleBetweenVectors = function( v1, v2 ){
-            var iAngle = Math.acos( this._dotProductV2( v1, v2 ) / (  this._length(v1) * this._length(v2)) );
-            if ( isNaN( iAngle ) === true ){
-                    return 0;
-            }else{
-                    return iAngle;
-            }
-    };		
-
-    this._rot90CW = function(v){
-            return { x: v.y, y : -v.x};
-    };
-    this._rot90CCW = function(v){
-            return { x: -v.y, y : v.x};
-    };	
-
-    this._rotateVector2D = function( iAngle, v ) {		
-                    var iX = v.x *   Math.cos( iAngle )  + v.y * Math.sin( iAngle );
-                    var iY = v.x * (-Math.sin( iAngle )) + v.y * Math.cos( iAngle );		
-                    return { x:iX, y:iY };
-    };
-	
-    this._initCurve = function(){
-        var _aCurve = s_oLevelSettings.getCurveForLevel(_iCurLevel);
-        
-        var oCurveGfx = new createjs.Graphics();
-	_aCurveMapData = new Array();
-        
-
-		for(var j = 0;j<_aCurve.length - 2;++j){
-                var oPoint0 = (j === 0)?new createjs.Point(_aCurve[0][0],_aCurve[0][1]):new createjs.Point((_aCurve[j][0]+_aCurve[j+1][0])/2,
-                                                                                            (_aCurve[j][1]+_aCurve[j+1][1])/2);
-                var oPoint1 = new createjs.Point(_aCurve[j+1][0],_aCurve[j+1][1]);
-                var oPoint2 = (j <= _aCurve.length - 4)?new createjs.Point((_aCurve[j+1][0] + _aCurve[j+2][0])/2,
-                                                 (_aCurve[j+1][1] + _aCurve[j+2][1])/2):new createjs.Point(_aCurve[j+2][0],_aCurve[j+2][1]);
-                var steps = s_oBezier.init(oPoint0, oPoint1, oPoint2, STEP_LENGTH);
-                for(var m = 1;m<=steps;++m){
-                    var data = s_oBezier.getAnchorPoint(m);
-                    _aCurveMapData.push(data);
-                }
-        }
-		
-        var iStrength = 10;
-        var oPoint;
-        var h;
-        var oFirstPoint;
-
-        oCurveGfx.beginFill("rgba(0,0,0,0.5)");
-
-        // DRAW LEFT CURVE
-        oPoint = { x : (_aCurveMapData[1][0] - _aCurveMapData[0][0]), y : (_aCurveMapData[1][1] - _aCurveMapData[0][1])  };
-        oPoint = this._normalize(oPoint);
-        oPoint = this._rot90CW(oPoint);
-
-        oPoint.x *= iStrength;
-        oPoint.y *= iStrength;
-        oPoint.x += _aCurveMapData[0][0];
-        oPoint.y += _aCurveMapData[0][1];
-
-        oFirstPoint = { x:oPoint.x, y:oPoint.y};
-
-        oCurveGfx.moveTo(oPoint.x,oPoint.y);
-        for ( h = 1; h <_aCurveMapData.length-1; h++){
-
-                oPoint = { x : (_aCurveMapData[h+1][0] - _aCurveMapData[h][0]), y : (_aCurveMapData[h+1][1] - _aCurveMapData[h][1])  };
-                oPoint = this._normalize(oPoint);
-                oPoint = this._rot90CW(oPoint);
-
-                oPoint.x *= iStrength;
-                oPoint.y *= iStrength;
-                oPoint.x += _aCurveMapData[h][0];
-                oPoint.y += _aCurveMapData[h][1];			
-                oCurveGfx.lineTo(oPoint.x,oPoint.y);
+        if(_oPlaceHolder !== null){
+            s_oStage.removeChild(_oPlaceHolder);
+            _oPlaceHolder = null;
         }
 
-        oCurveGfx.lineTo(oPoint.x,oPoint.y);
+        _oMySeat.reset();
+        _oNeighborsPanel.reset();
 
-        // DRAW RIGHT CURVE
-        oPoint = { x : (_aCurveMapData[_aCurveMapData.length-1][0] - _aCurveMapData[_aCurveMapData.length-2][0]),
-                           y : (_aCurveMapData[_aCurveMapData.length-1][1] - _aCurveMapData[_aCurveMapData.length-2][1])  };
-
-        oPoint = this._normalize(oPoint);
-        oPoint = this._rot90CCW(oPoint);
-
-        oPoint.x *= iStrength;
-        oPoint.y *= iStrength;
-        oPoint.x += _aCurveMapData[_aCurveMapData.length-1][0];
-        oPoint.y += _aCurveMapData[_aCurveMapData.length-1][1];
-        oCurveGfx.lineTo(oPoint.x,oPoint.y);
-
-        for ( h = _aCurveMapData.length-2; h > 1; h--){
-                oPoint = { x : (_aCurveMapData[h][0] - _aCurveMapData[h-1][0]), y : (_aCurveMapData[h][1] - _aCurveMapData[h-1][1])  };
-                oPoint = this._normalize(oPoint);
-                oPoint = this._rot90CCW(oPoint);
-
-                oPoint.x *= iStrength;
-                oPoint.y *= iStrength;
-                oPoint.x += _aCurveMapData[h][0];
-                oPoint.y += _aCurveMapData[h][1];			
-                oCurveGfx.lineTo(oPoint.x,oPoint.y);
-        }		
-
-        oCurveGfx.lineTo(oFirstPoint.x, oFirstPoint.y);
-
-        oCurveGfx.endFill();
-
-        _oCurve = new createjs.Shape(oCurveGfx);
-        _oCurveAttach.addChild(_oCurve);
-        
-        var iLen = _aCurveMapData.length;
-        var oSprite = s_oSpriteLibrary.getSprite('end_path');
-        _oEndSprite = createBitmap(oSprite);
-        _oEndSprite.x = _aCurveMapData[iLen - 9][0];
-        _oEndSprite.y = _aCurveMapData[iLen - 9][1];
-        _oEndSprite.regX = oSprite.width/2;
-        _oEndSprite.regY = oSprite.height/2;
-        _oCurveAttach.addChild(_oEndSprite);
-		
-	_oCurveAttach.cache(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-    };
-    
-    this._initBall = function(){
-        _aBalls = new Array( );
-        var oBall = this.getRandomBall();
-        _aBalls.unshift(oBall);
-
-        oBall.setPos(16,_aCurveMapData);
-       _iGameState = STATE_GAME_ROLL_IN;
-    };
-    
-    this.getRandomBall = function(){
-        _iTotalBall--;
-        var iRandomNum = Math.floor(Math.random() * _iBallColors);
-        return new CBall(iRandomNum,_oBallAttach);
-    };
-
-    this._pushNextBall = function(index,step){
-        var aTemp = new Array();
-        aTemp.push(_aBalls[index]);
-
-        for(var i = index;i < _aBalls.length - 1;++i){
-            if( (_aBalls[i + 1].getFotogram() - _aBalls[i].getFotogram()) <= 16){
-                if( (_aBalls[i + 1].getFotogram() - _aBalls[i].getFotogram() ) < 16){
-                        _aBalls[i + 1].setPos(_aBalls[i].getFotogram() + 16,_aCurveMapData);
-                }
-                aTemp.push(_aBalls[i + 1]);
-            }else{
-                break;
-            }
-        }
-
-        for(var j = 0;j < aTemp.length;++j){
-                aTemp[j].increasePos(step,_aCurveMapData);
-        }
-
-        if(_aBalls[_aBalls.length - 1].getFotogram() >= (_aCurveMapData.length - 17) ){
-                _bCanShoot = false;
-
-                
-                setVolume("soundtrack",0);
-                var oSound = playSound("game_over",1,false);
-                oSound.on('end', this._onSoundGameOverComplete);
-
-
-                s_oStage.removeEventListener("stagemousemove");
-                _bCheckPushCollision = false;
-                _bAttractBall = false;
-                _iMultiplierCombo = 1;
-                
-                _aBalls[_aBalls.length - 1].unload();
-               
-                _aBalls.splice(_aBalls.length-1,1);
-                _iGameState = STATE_GAME_ROLL_OUT;
-        }
-    };
-    
-    this.onIntroduceBall = function(){
-        if(_aBalls.length !== 0){
-            s_oGame._pushNextBall(0,1);
-
-            if(_aBalls[0].getFotogram() === 32 && _iTotalBall !== 0){
-                var oBall = s_oGame.getRandomBall();
-                _aBalls.unshift(oBall);
-                
-                oBall.setPos(16,_aCurveMapData);
-            }
-        }
-    };
-    
-    this._initDaisies = function(){
-        //REMOVE EVENTUALLY ALL DAISES
-        if(_aDaisies){
-            for(var j=0;j<_aDaisies.length;j++){
-                _aDaisies[j].unload();
-            }
-        }
-        
-        
-        var aPos = s_oLevelSettings.getDaisyPosForLevel(_iCurLevel);
-        _aDaisies = new Array();
-        
-        for(var i=0;i<aPos.length;i++){
-            _aDaisies[i] = new CDaisy(aPos[i].x,aPos[i].y,_oBgAttach);
-        }
-    };
-    
-    this._spawnBee = function(){
-        _iTimeElapsBee = 0;
-        new CBee(s_oLevelSettings.getRandBeeTrajectory(),_oFgAttach);
-        _iTimeBeeSpawn = Math.floor(Math.random() * (MAX_TIME_SPAWN_BEE - MIN_TIME_SPAWN_BEE + 1)) + MIN_TIME_SPAWN_BEE;
-    };
-    
-    this.showDaisies = function(){
-        for(var i=0;i<_aDaisies.length;i++){
-            _aDaisies[i].show(Math.random()*1500);
-        }
-    };
-    
-    this.shoot = function(){
-        playSound("shot",1,false);
-        
-        _oHero.playAnim("shot");
-        
-        var iRadian = (_oHero.getRotation() + 90) * Math.PI/180;
-        var oBall = _oHero.getCurrentBall();
-        oBall.changePos(_oHero.getX() + 60 * Math.cos(iRadian),_oHero.getY() + 60 * Math.sin(iRadian) );
-        _oBallAttach.addChild(oBall.getSprite());
-        oBall.setContainer(_oBallAttach);
-        _aBallShooted.push(new Array(oBall,iRadian));
-        
-        _iGameState = STATE_GAME_SHOOTING;
-    };
-    
-    this._checkCollision = function(aArrayToCheck){
-        var oBall = aArrayToCheck[0];
-
-        for(var j = 0;j<_aBalls.length;++j){
-            var iDist = (_aBalls[j].getX() - oBall.getX())*(_aBalls[j].getX() - oBall.getX()) + 
-                                                (_aBalls[j].getY() - oBall.getY())*(_aBalls[j].getY() - oBall.getY());
-            if(iDist <= BALL_DIAMETER_SQUARE){
-                return j;
-            }
-        }
-        return -1;
-    };
-    
-    this._insertBall = function(oBall,iIndex,szLabel){
-        var iPosX;
-        var iPosY;
-        var iInsertPos;
-
-        if(szLabel === "next"){
-            iInsertPos = _aBalls[iIndex].getFotogram() + 16;
-
-            if(_aBalls[iIndex + 1] && (_aBalls[iIndex + 1].getFotogram() - _aBalls[iIndex].getFotogram()) < 32 ){
-                _aBallCrushed.push(new Array(oBall,_aBalls[iIndex + 1]));
-                _bCheckPushCollision = true; 
-            }
+        if (_oMySeat.getCredit() < 0.1) {
+            _iState = -1;
+            _oBlock.visible= false;
+            _oGameOverPanel.show();
         }else{
-            if(_aBalls[iIndex - 1] && (_aBalls[iIndex].getFotogram() - _aBalls[iIndex - 1].getFotogram()) < 32){
-                iInsertPos = _aBalls[iIndex - 1].getFotogram() + 16; 
-                _aBallCrushed.push(new Array(oBall,_aBalls[iIndex]));
-                _bCheckPushCollision = true; 
-            }else {
-                iInsertPos = _aBalls[iIndex].getFotogram() - 16;
-            }
+            _oInterface.enableRebet();
+            this._setState(STATE_GAME_WAITING_FOR_BET);
         }
-
-        iPosX = _aCurveMapData[iInsertPos][0];
-        iPosY = _aCurveMapData[iInsertPos][1];
-
-        var oParent = this;
-        createjs.Tween.get(oBall.getSprite()).to({x:iPosX,y:iPosY}, 200).call(function(){oParent.motionFinished(oBall,iInsertPos)});   
+        
+        _iHandCont++;
+        if(_iHandCont === NUM_HAND_FOR_ADS){
+            _iHandCont = 0;
+            $(s_oMain).trigger("show_interlevel_ad");
+        }
     };
     
-    this.motionFinished = function(oBall,iInsertPos){
-        var iIndex;
+    this._startRouletteAnim = function(){
+        _oInterface.disableBetFiches();
 
-        for(var i = 0;i < _aBalls.length;++i){
-            if(_aBalls[i].getFotogram() > iInsertPos){
-                iIndex = i;
-                break;
-            }
-            if(i === _aBalls.length - 1){
-                iIndex = i + 1;
-            }
-        }
+        _iNumberExtracted = this._generateWinLoss();
 
-        _aBallCrushed.splice(_aBallCrushed.indexOf(oBall),1);
+        _aNumExtractedHistory.push(_iNumberExtracted);
 
-        oBall.setPos(iInsertPos,_aCurveMapData);
-        _aBalls.splice(iIndex,0,oBall);
-
-        if(_aBalls[iIndex - 1] && _aBalls[iIndex - 1].getIndex() === _aBalls[iIndex].getIndex() &&
-                                                    (_aBalls[iIndex].getFotogram() - _aBalls[iIndex - 1].getFotogram()) > 17){
-                                                
-            this._addToBallAttracted(_aBalls[iIndex]);
-        }
-        if(_aBalls[iIndex + 1] && _aBalls[iIndex + 1].getIndex() === _aBalls[iIndex].getIndex() 
-                                    && (_aBalls[iIndex + 1].getFotogram() - _aBalls[iIndex].getFotogram()) > 17){
-                this._addToBallAttracted(_aBalls[iIndex + 1]);
-        }
-
-        this._clearCheck(iIndex,true);
+        _iTimeElaps = 0;
+        _iFactor = 0;
+        _iFrameToStop = s_oGameSettings.getFrameForNumber(_iNumberExtracted);
     };
     
-    this._addToBallAttracted = function(oBall){
-        if(_aBallAttracted === null){
-            _aBallAttracted = new Array();
-            _aBallAttracted.push(oBall);
+    this._startWheelTopAnim = function(){
+        _oWheelTopAnim.playToFrame(_iFrameToStop);
+        
+    };
+    
+    this._startBallSpinAnim = function(){
+        var iRand = Math.floor(Math.random() * 3);
+        
+        _oWheelAnim.startSpin(iRand,s_oGameSettings.getFrameForBallSpin(iRand,_iNumberExtracted));
+    };
+    
+    this._generateWinLoss = function(){
+        var iRandIndex;
+        var aNumbersBetted = _oMySeat.getNumbersBetted();
+        var aTmpNumbers = _oMySeat.getNumberSelected();
+        var iWin = aNumbersBetted[aTmpNumbers[0][0]].win;
+        var iWinOccurence;
+        var iRand;
+        if(_iCasinoCash < iWin){
+            iWinOccurence = 0;
+            iRand = Math.floor(Math.random() * (100));
+        }else if(WIN_OCCURRENCE === -1){
+            iWinOccurence = 37-_iBetMult;
+            iRand = Math.floor(Math.random() * (38));
         }else{
-            _aBallAttracted.push(oBall);
+            iWinOccurence = WIN_OCCURRENCE;
+            iRand = Math.floor(Math.random() * (100));
         }
-        setTimeout(function(){_bAttractBall = true;},400);
+
+        if (iRand >= iWinOccurence) {
+            _bWinAssigned = false;
+        }else {
+            _bWinAssigned = true;
+        }
+
+        if(_bWinAssigned){
+            do{
+                iRandIndex=Math.floor(Math.random() * aNumbersBetted.length);
+                iWin = aNumbersBetted[iRandIndex].win;
+            }while(iWin === 0);
+
+            _iNumberExtracted=iRandIndex;
+        }else{
+            var aTmpNumbers=new Array();
+            for(var k=0;k<37;k++){
+                    aTmpNumbers.push(k);
+            }
+            do{
+                if(aTmpNumbers.length === 0){
+                    iRandIndex=Math.floor(Math.random() * aNumbersBetted.length);
+                    break;
+                }
+                iRandIndex=Math.floor(Math.random() * aTmpNumbers.length);
+                iWin = aNumbersBetted[iRandIndex].win;
+
+                aTmpNumbers.splice(iRandIndex,1);
+            }while(iWin > _oMySeat.getCurBet());
+
+            _iNumberExtracted = iRandIndex;
+        }
+
+        return _iNumberExtracted;
     };
     
-    this._clearCheck = function(iIndex,bClear){
-        var aTemp = new Array();
-        aTemp.push(_aBalls[iIndex]);
-        var iColorIndex = _aBalls[iIndex].getIndex();
+    this._rouletteAnimEnded = function(){
+        _iTimeElaps = 0;
+        _oWheelTopAnim.showBall();
+        this._setState(STATE_GAME_SHOW_WINNER);
+        
+        stopSound("wheel_sound");
 
-        var i = iIndex + 1;
-        while(_aBalls[i]){
+        var aNumbersBetted=_oMySeat.getNumbersBetted();
+        var oWins=aNumbersBetted[_iNumberExtracted];
+        var iWin=roundDecimal(oWins.win,2);
+        _aFichesToMove = new Array();
 
-            if(_aBalls[i].getIndex() === iColorIndex){
-                
-                if(_aBalls[i].getFotogram() - _aBalls[i - 1].getFotogram() <= 17){
-                    aTemp.push(_aBalls[i]);
-                    ++i;
-                }else if(!bClear){
-                    aTemp.push(_aBalls[i]);
-                    ++i;
-                } else break;
-            }else{
-                break;
-            }
-        }
-      
-        var j = iIndex - 1;
-        while(_aBalls[j]){
-            if(_aBalls[j].getIndex() === iColorIndex){
-                    if(_aBalls[j + 1].getFotogram() - _aBalls[j].getFotogram() <=17){
-                        aTemp.push(_aBalls[j]);
-                        --j;
-                    }else if(!bClear){
-                        aTemp.push(_aBalls[j]);
-                        --j;
-                    }
-                    else break;
-            } else{
-                break;
-            }
-        }
-
-        ++j;
-
-        if(aTemp.length > 2 && bClear){
-            this._clearBall(j,aTemp);
-        }
-        return aTemp.length;
-    };
-    
-    this._attract = function(){
-        if(_aBallAttracted.length !== 0){
-            for(var i = 0;i<_aBallAttracted.length;++i){
-                var iIndex = _aBalls.indexOf(_aBallAttracted[i]);
-                if(iIndex !== -1 && _aBalls[iIndex - 1]){
-                    if(_aBallAttracted[i].getIndex() === _aBalls[iIndex - 1].getIndex() ){
-                        var iSteps = (_aBallAttracted[i].getFotogram()-_aBalls[iIndex - 1].getFotogram()) > 19?3:(_aBallAttracted[i].getFotogram()
-                                                                    - _aBalls[iIndex - 1].getFotogram() - 16);
-                        this._pushNextBall(iIndex,-iSteps);
-
-                        if( (_aBallAttracted[i].getFotogram() - _aBalls[iIndex - 1].getFotogram() )<= 16){
-                                _iMultiplierCombo++;
-                                _aBallAttracted.splice(i,1);
-
-                                
-                                this._clearCheck(iIndex-1,true);
-                                if(_aBallAttracted.length === 0){
-                                    _bAttractBall = false;
-                                    _iMultiplierCombo = 1;
-                                }
-                        }
-                    }else{
-                        _aBallAttracted.splice(i,1);
-                        if(_iCurCombos > _iMaxCombos){
-                                _iMaxCombos = _iCurCombos;
-                        }
-                        _iCurCombos = 0;
+        for(var j=0;j<aNumbersBetted.length;j++){
+                var oRes=aNumbersBetted[j];
+                if(oRes.win>0){
+                    for(var k=0;k<oRes.mc.length;k++){
+                        _aFichesToMove.push(oRes.mc[k]);
+                        var oEndPos = s_oGameSettings.getAttachOffset("oDealerWin");
+                        oRes.mc[k].setEndPoint(oEndPos.x,oEndPos.y);
                     }
                 }
+        }
+
+        if(oWins.mc){
+            for(var i=0;i<oWins.mc.length;i++){
+                var oEndPos = s_oGameSettings.getAttachOffset("oReceiveWin");
+                oWins.mc[i].setEndPoint(oEndPos.x,oEndPos.y);
             }
+
+            _oInterface.showWin(iWin);
         }else{
-            _bAttractBall = false;
-            _iMultiplierCombo = 1;
+            _oInterface.showLose();
         }
-    };
-    
-    this._checkPushCollision = function(){
-        if(_aBallCrushed.length !== 0){
-            for(var i = 0; i < _aBallCrushed.length; ++i){
-		var iDis = (_aBallCrushed[i][0].getX() - _aBallCrushed[i][1].getX())*
-                                        (_aBallCrushed[i][0].getX() - _aBallCrushed[i][1].getX()) + 
-                                        (_aBallCrushed[i][0].getY() - _aBallCrushed[i][1].getY())*
-                                        (_aBallCrushed[i][0].getY() - _aBallCrushed[i][1].getY());
-		var isCollision = iDis < BALL_DIAMETER_SQUARE?true:false;
-		var iMoveStep = 0;
-		while(isCollision){
-                    ++iMoveStep;
-                    iDis = (_aBallCrushed[i][0].getX() - _aCurveMapData[_aBallCrushed[i][1].getFotogram() + 
-                                    iMoveStep][0])*(_aBallCrushed[i][0].getX() - _aCurveMapData[_aBallCrushed[i][1].getFotogram() + 
-                                    iMoveStep][0])+(_aBallCrushed[i][0].getY() - _aCurveMapData[_aBallCrushed[i][1].getFotogram() + iMoveStep][1])
-                                    *(_aBallCrushed[i][0].getY() - _aCurveMapData[_aBallCrushed[i][1].getFotogram() + iMoveStep][1]);
-                    isCollision = iDis < BALL_DIAMETER_SQUARE?true:false;
-                }
+        _oInterface.refreshNumExtracted(_aNumExtractedHistory);
 
-                var iIndex;
-                iIndex = _aBalls.indexOf(_aBallCrushed[i][1]);
-                if(iIndex !== -1){
-                    this._pushNextBall(iIndex,iMoveStep);
-                }
-            }
+        //ATTACH PLACEHOLDER THAT SHOW THE NUMBER EXTRACTED
+        _oPlaceHolder = createBitmap(s_oSpriteLibrary.getSprite('placeholder'));
+        if(_iNumberExtracted === 0){
+                _oPlaceHolder.x = _aEnlights["oEnlight_"+_iNumberExtracted].getX() +27;
+                _oPlaceHolder.y = _aEnlights["oEnlight_"+_iNumberExtracted].getY() + 22;
         }else{
-            _bCheckPushCollision = false;
+                _oPlaceHolder.x = _aEnlights["oEnlight_"+_iNumberExtracted].getX();
+                _oPlaceHolder.y = _aEnlights["oEnlight_"+_iNumberExtracted].getY();
         }
-    };
-    
-    this._clearBall = function(iIndex,aTmpArray){
-        ++_iCurCombos;
-
-        playSound("combo",1,false);
         
-        var iTmpScore = 0;
-        for(var i = 0; i < aTmpArray.length; ++i){
-            aTmpArray[i].explode();
-            iTmpScore += COMBO_VALUE;
-        }
-        iTmpScore *= _iMultiplierCombo;
-        _iTotScore += iTmpScore;
-        _iCurLevelScore+= iTmpScore;
-        
-        _oInterface.refreshScore(_iTotScore );
+        _oPlaceHolder.regX = 6;
+        _oPlaceHolder.regY = 20;
+        s_oStage.addChild(_oPlaceHolder);
 
-        if(_aBalls.length === aTmpArray.length){
-            _bCanShoot = false;
-            _iLastId = _aBalls[_aBalls.length - 1].getFotogram();
-            setTimeout(this._gamePass,600);
-            
-            
-            setVolume("soundtrack",0);
-            var oSound = playSound("win",1,false);
-            oSound.on("end", this._onSoundGameOverComplete);
-            
-            
-            _bUpdate = false;
-            this.showDaisies();
-        }
-        _aBalls.splice(iIndex,aTmpArray.length);
-
-        if(_iTotalBall === 0){
-            this._checkColor(aTmpArray[0].getIndex() );
-        }
-
-        if(_aBalls[iIndex-1] && _aBalls[iIndex] && (_aBalls[iIndex - 1].getIndex() === _aBalls[iIndex].getIndex())){
-            if(this._clearCheck(iIndex,false) < 3){
-                if(_iCurCombos > _iMaxCombos){
-                        _iMaxCombos = _iCurCombos;
-                }
-                _iCurCombos = 0;
-            }
-
-            this._addToBallAttracted(_aBalls[iIndex]);
-        } else{
-            if(_iCurCombos > _iMaxCombos){
-                    _iMaxCombos = _iCurCombos;
-            }
-            _iCurCombos = 0;
-        }
-    };
-    
-    this._gamePass = function(){
-        _iIntervalID = setInterval(s_oGame._extraScore,_iBallSpeed);
-    };
-    
-    this._extraScore = function(){
-        if( (_iLastId + 16) < (_aCurveMapData.length - 17) ){
-            _iLastId += 16;
-            new CExtraScore(_aCurveMapData[_iLastId][0],_aCurveMapData[_iLastId][1],_oExtraScoreAttach);
-            _iTotScore += EXTRA_SCORE;
-            _iCurLevelScore += EXTRA_SCORE;
-            
-            _oInterface.refreshScore(_iTotScore);
+        _oMySeat.showWin(iWin);
+        if(iWin > 0){
+            _iCasinoCash -= iWin;
         }else{
-            $(s_oMain).trigger("end_level",_iCurLevel);
-            clearInterval(_iIntervalID);
-            s_oStage.removeEventListener("stagemousemove");
-            _bCanShoot = false;
-            
-            s_oMain.setLocalStorageScore(_iCurLevelScore,_iTotScore,_iCurLevel);
-            
-            _iCurLevel++;
-            
-            if(_iCurLevel > s_oLevelSettings.getNumLevels()){
-                _iCurLevel--;
-                _oInterface.win(_iTotScore);
-            }else{
-                s_oMain.setLocalStorageLevel(_iCurLevel);
-                _oInterface.nextLevel(_iCurLevel,_iTotScore);		
-            }
-            
+            _iCasinoCash += _oMySeat.getCurBet();
         }
-    };
-    
-    this._checkColor = function(iColor){
-        for(var i = 0;i<_aBalls.length;++i){
-                if(_aBalls[i].getIndex() === iColor) return;
-        }
-
-        for(var j = 0;j < _aBallShooted.length;++j){
-                if(_aBallShooted[j].getIndex() === iColor) return;
-        }
-        _oHero.colorCleared(iColor);
-    };
-    
-    this.nextLevel = function(){
-        _oBgAttach.removeChild(_oBg);
-        _oFgAttach.removeChild(_oFg);
-        
-        _oBg = createBitmap(s_oSpriteLibrary.getSprite(s_oLevelSettings.getBgForLevel(_iCurLevel)));
-        _oBgAttach.addChild(_oBg);
+                
 	
-        _oFg = createBitmap(s_oSpriteLibrary.getSprite(s_oLevelSettings.getFgForLevel(_iCurLevel)) );
-        _oFgAttach.addChild(_oFg);
-        
-        this.reset();
-        _bUpdate = true;
+        $(s_oMain).trigger("save_score",[_oMySeat.getCredit(),iWin]);
+
+        _oInterface.refreshMoney(_oMySeat.getCredit());
     };
     
-    this.onShot = function(iX,iY){
-        if(_bCanShoot && _oHero.canShoot() ){
-            if(s_bMobile){
-                 var iDx = iX - (_oHero.getX()*s_iScaleFactor);
-                 var iDy = iY - (_oHero.getY()*s_iScaleFactor);
-                 var iRadians = Math.atan2(iDy,iDx);
-                 _oHero.rotate(iRadians * 180 / Math.PI - 90);
+    this.showMsgBox = function(szText){
+        _oMsgBox.show(szText);
+    };
+    
+    this.onRecharge = function() {
+        _oMySeat.recharge(TOTAL_MONEY);
+        _oInterface.refreshMoney(_oMySeat.getCredit());
+
+        this._setState(STATE_GAME_WAITING_FOR_BET);
+        
+        _oGameOverPanel.hide();
+        
+        $(s_oMain).trigger("recharge");
+    };
+    
+    this.onSpin = function(){
+        if(_oNeighborsPanel.isVisible()){
+                _oNeighborsPanel.onExit();
+        }
+	
+        if (_oMySeat.getCurBet() === 0) {
+                return;
+        }
+        
+        if(_oMySeat.getCurBet() < MIN_BET){
+            _oMsgBox.show(TEXT_ERROR_MIN_BET);
+            _oInterface.enableBetFiches();
+            _oInterface.enableSpin(true);
+            return;
+        }
+
+        if(_oBlock.visible){
+                return;
+        }
+
+        _oBlock.visible= true;
+
+        _oWheelTopAnim.hideBall();
+        _oNeighborsPanel.hide();
+        _oFinalBet.hide();
+        _oInterface.enableSpin(false);
+        _oInterface.displayAction(TEXT_SPINNING);
+		
+		$(s_oMain).trigger("bet_placed",_oMySeat.getCurBet());
+		
+        this._startRouletteAnim();
+        this._startWheelTopAnim();
+        this._startBallSpinAnim();
+
+        this._setState(STATE_GAME_SPINNING);
+		
+        playSound("wheel_sound",1,false);
+        
+    };
+    
+    this._onSitDown = function(){
+        this._setState(STATE_GAME_WAITING_FOR_BET);
+        _oMySeat.setInfo(TOTAL_MONEY, _oAttachFiches);
+        _oInterface.refreshMoney(TOTAL_MONEY);
+    };
+    
+    this._onShowBetOnTable = function(oParams,bRebet){
+        var szBut = oParams.button;
+        var aNumbers = oParams.numbers;
+        _iBetMult -= oParams.bet_mult;
+        _aBetMultHistory.push(oParams.bet_mult);
+        
+
+        var iBetWin = oParams.bet_win;
+        var iNumFiches = oParams.num_fiches;
+        var iIndexFicheSelected;
+        var iFicheValue;
+        
+        if(!bRebet){
+            iIndexFicheSelected = _oInterface.getCurFicheSelected();
+
+            if(_aBetWinHistory.length === 0){
+                _aRebetHistory = new Array();
+                _oInterface.disableRebet();
             }
-            this.shoot();
+            _aRebetHistory.push({button:oParams.button,numbers:oParams.numbers,bet_mult:oParams.bet_mult,bet_win:oParams.bet_win,
+                                                            num_fiches:oParams.num_fiches,neighbors:false,value:iIndexFicheSelected});
+        }else{
+            iIndexFicheSelected = oParams.value;
+        }
+        
+        iFicheValue=s_oGameSettings.getFicheValues(iIndexFicheSelected);
+        _aBetWinHistory.push(iBetWin);
+        _aNumFicheHistory.push(iNumFiches);
+        
+        
+        var iCurBet=_oMySeat.getCurBet();
+        if( (_oMySeat.getCredit() - (iFicheValue * iNumFiches)) < 0){
+            //SHOW MSG BOX
+            _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
+            _oNeighborsPanel.reset();
+            return;
+        }
+        if( (iCurBet + (iFicheValue * iNumFiches)) > MAX_BET ){
+            _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
+            _oNeighborsPanel.reset();
+            return;
+        }
+
+        switch(szBut){
+                case "oBetVoisinsZero":{
+                        _oMySeat.createPileForVoisinZero(iFicheValue,iIndexFicheSelected,aNumbers,iBetWin,iNumFiches);
+                        break;
+                }
+                case "oBetTier":{
+                        _oMySeat.createPileForTier(iFicheValue,iIndexFicheSelected,aNumbers,iBetWin,iNumFiches);
+                        break;
+                }
+                case "oBetOrphelins":{
+                        _oMySeat.createPileForOrphelins(iFicheValue,iIndexFicheSelected,aNumbers,iBetWin,iNumFiches);
+                        break;
+                }
+                case "oBetFinalsBet":{
+                        _oMySeat.createPileForMultipleNumbers(iFicheValue,iIndexFicheSelected,aNumbers,iBetWin,iNumFiches);
+                        break;
+                }
+                default:{
+                        _oMySeat.addFicheOnTable(iFicheValue,iIndexFicheSelected,aNumbers,iBetWin,szBut);
+                }
+        }
+        _oInterface.refreshMoney(_oMySeat.getCredit());
+        _oInterface.enableSpin(true);
+        
+        playSound("chip",1,false);
+        
+    };
+    
+    this._onShowBetOnTableFromNeighbors = function(oParams,bRebet){
+        var aNumbers = oParams.numbers;
+        _iBetMult -= oParams.bet_mult;
+        _aBetMultHistory.push(oParams.bet_mult);
+
+        var iBetWin = oParams.bet_win;
+        var iNumFiches = oParams.num_fiches;
+        if(!bRebet){
+            if(_aBetWinHistory.length === 0){
+                _aRebetHistory = new Array();
+                _oInterface.disableRebet();
+            }
+            _aRebetHistory.push({button:oParams.button,numbers:oParams.numbers,bet_mult:oParams.bet_mult,bet_win:oParams.bet_win,
+                                        num_fiches:oParams.num_fiches,value:_oInterface.getCurFicheSelected(),num_clicked:oParams.num_clicked,neighbors:true});
+        }
+
+        _aBetWinHistory.push(iBetWin);
+        _aNumFicheHistory.push(iNumFiches);
+
+        var iFicheValue=s_oGameSettings.getFicheValues(oParams.value);
+
+        //var iCurBet=_oMySeat.getCurBet();
+
+        if( (iFicheValue * iNumFiches)>_oMySeat.getCredit() ){
+            //SHOW MSG BOX
+            _oMsgBox.show(TEXT_ERROR_NO_MONEY_MSG);
+            _oNeighborsPanel.reset();
+            return;
+        }
+/*
+        if( (iCurBet + (iFicheValue * iNumFiches)) > MAX_BET ){
+            _oMsgBox.show(TEXT_ERROR_MAX_BET_REACHED);
+            _oNeighborsPanel.reset();
+            return;
+        }*/
+
+        _oMySeat.createPileForMultipleNumbers(iFicheValue,oParams.value,aNumbers,iBetWin,iNumFiches);
+        
+        _oInterface.refreshMoney(_oMySeat.getCredit());
+        _oInterface.enableSpin(true);
+        
+        playSound("chip",1,false);
+    };
+    
+    this._onShowEnlight = function(oParams){
+        var aBets = oParams.numbers;
+        
+        for(var i=0;i<aBets.length;i++){
+            _aEnlights["oEnlight_"+aBets[i]].show();
+        }
+
+        var szEnlight=oParams.enlight;
+        if(szEnlight){
+            _aEnlights["oEnlight_"+szEnlight].show();
         }
     };
     
-    this._onMouseMove = function(iXMouse,iYMouse){
-        var dx = iXMouse - (_oHero.getX()*s_iScaleFactor);
-        var dy = iYMouse - (_oHero.getY()*s_iScaleFactor);
-        var iRadians = Math.atan2(dy,dx);
-        _oHero.rotate(iRadians * 180 / Math.PI - 90);
+    this._onHideEnlight = function(oParams){
+        var aBets=oParams.numbers;
+        for(var i=0;i<aBets.length;i++){
+                _aEnlights["oEnlight_"+aBets[i]].hide();
+        }
+
+        var szEnlight=oParams.enlight;
+        if(szEnlight){
+            _aEnlights["oEnlight_"+szEnlight].hide();
+        }
     };
     
+    this.onClearLastBet = function(){
+        if(_aBetMultHistory.length>0){
+                var iBetMultToRemove = _aBetMultHistory.pop();
+                _iBetMult += iBetMultToRemove;
+        }
+		
+        if(_aBetMultHistory.length === 0){
+                _oInterface.enableSpin(false);
+        }
+		
+        _oMySeat.clearLastBet(_aBetWinHistory.pop(),_aNumFicheHistory.pop());
+        _oInterface.refreshMoney(_oMySeat.getCredit());
+        _oNeighborsPanel.clearLastBet();
+        if(_aRebetHistory.length > 0){
+            _aRebetHistory.pop();
+        }  
+    };
+    
+    this.onClearAllBets = function(){
+        _oMySeat.clearAllBets();
+        _oInterface.refreshMoney(_oMySeat.getCredit());
+        _oInterface.enableSpin(false);
+        _oNeighborsPanel.reset();
+        _aRebetHistory = new Array();
+        _iBetMult=37;
+    };
+    
+    this.onRebet = function(){
+        for(var i=0;i<_aRebetHistory.length;i++){
+            if(_aRebetHistory[i].neighbors === true){
+                //this._onShowBetOnTableFromNeighbors(_aRebetHistory[i],true);
+                _oNeighborsPanel.rebet(_aRebetHistory[i].num_clicked);
+            }else{
+                this._onShowBetOnTable(_aRebetHistory[i],true);
+            }
+            
+        }
+    };
+    
+    this.onFinalBetShown = function(){
+        if(_oFinalBet.isVisible()){
+            _oFinalBet.hide();
+        }else{
+            _oFinalBet.show();	
+        }
+    };
+    
+    this.onOpenNeighbors = function(){
+        _oFinalBet.hide();
+        _oNeighborsPanel.showPanel(_oInterface.getCurFicheSelected(),_oMySeat.getCredit());
+    };
+   
     this.onExit = function(){
         this.unload();
         s_oMain.gotoMenu();
         $(s_oMain).trigger("end_session");
-        $(s_oMain).trigger("share_event",_iTotScore);
+        $(s_oMain).trigger("share_event",_oMySeat.getCredit());
     };
     
-    this._onSoundGameOverComplete = function(){
-        setVolume("soundtrack",1)
-    };
-    
-    this._updateMove = function(){
-        _iTimeElaps += s_iTimeElaps;
-        if(_iTimeElaps > _iBallSpeed){
-            _iTimeElaps = 0;
-            this.onIntroduceBall();
+    this._updateWaitingBet = function(){
+        if(_oNeighborsPanel.isVisible()){
+            return;
         }
-    };
-    
-    this._updateRollOut = function(){
-        for(var i = _aBalls.length-1;i>=0;--i){
-            if(_aBalls[i].getFotogram() > (_aCurveMapData.length - 17)){
-                _aBalls[i].unload();
-                _aBalls.splice(i,1);
-                if(_aBalls.length === 0){
-                    _iGameState = -1;
-                    _oInterface.gameOver(_iTotScore);
-                    _bUpdate = false;
-                }
+
+        if(TIME_WAITING_BET === 0){
+            _oInterface.displayAction(TEXT_MIN_BET+": "+MIN_BET+"\n"+TEXT_MAX_BET+": "+MAX_BET,
+                                                                                TEXT_DISPLAY_MSG_WAITING_BET);
+        }else{
+            _iTimeElaps += s_iTimeElaps;
+            if(_iTimeElaps > TIME_WAITING_BET){
+                    _iTimeElaps = 0;
+                    this.onSpin();
             }else{
-                _aBalls[i].increasePos(8,_aCurveMapData);
+                    var iCountDown=Math.floor((TIME_WAITING_BET - _iTimeElaps)/1000);
+
+                    _oInterface.displayAction(TEXT_MIN_BET+": "+MIN_BET+"\n"+TEXT_MAX_BET+": "+MAX_BET,
+                                                                                    TEXT_DISPLAY_MSG_WAITING_BET+" "+iCountDown);
+            }
+        }
+        
+        
+    };
+    
+    this._updateSpinning = function(){
+        _iTimeElaps += s_iTimeElaps;
+        
+        if (  _oWheelTopAnim.getCurrentFrame() === (NUM_WHEEL_TOP_FRAMES-1)) {
+            _oWheelTopAnim.playToFrame(1);
+        }else{
+            _oWheelTopAnim.nextFrame();
+        }
+        
+        if (_iTimeElaps > TIME_SPINNING) {
+            if ( _oWheelTopAnim.getCurrentFrame() === _iFrameToStop) {
+                this._rouletteAnimEnded();
             }
         }
     };
     
-    this._updateRollIn = function(){
-        if(_aBalls.length < BALL_ROLLING_IN){
-            for(var i = 0;i < _aBalls.length;++i){
-                _aBalls[i].increasePos(4,_aCurveMapData);
-            }
-
-            if(_aBalls[0].getFotogram() === 32){
-                var oBall = this.getRandomBall();
-                _aBalls.unshift(oBall);
-                oBall.setPos(16,_aCurveMapData);
-            }
-        }else{
-		
-            _iGameState = -1;
-
-            _aBallShooted = new Array();
-            _aBallCrushed = new Array();
-            _oHero.start();
-            
-            _iGameState = STATE_GAME_BALL_MOVE;
+    this._updateShowWinner = function(){
+        _iTimeElaps+=s_iTimeElaps;
+        if(_iTimeElaps>TIME_SHOW_WINNER){
+            _iTimeElaps=0;
+            this._setState(STATE_DISTRIBUTE_FICHES);
         }
     };
     
-    this._updateShooting = function(){
-        if(_aBallShooted.length !== 0){
-            for(var i = 0;i<_aBallShooted.length;++i){
-                if(_aBallShooted[i][0].getX() > 0 && _aBallShooted[i][0].getX() < CANVAS_WIDTH && 
-                                                    _aBallShooted[i][0].getY() > 0 && _aBallShooted[i][0].getY() < CANVAS_HEIGHT){
-                                                
-                    //CHECK COLLISION
-                    var iFlag = this._checkCollision(_aBallShooted[i]);
-                    if(iFlag === -1){
-                        _aBallShooted[i][0].increasePosWithNumbers(Math.cos(_aBallShooted[i][1]) * BALL_SHOOTED_SPEED,
-                                                                Math.sin(_aBallShooted[i][1]) * BALL_SHOOTED_SPEED);
-                        
-                    }else{
-                        var oBall = _aBallShooted[i][0];
-                        var iRadians = _aBallShooted[i][1];
-                        
-                        var iDis = Math.sqrt((_aBalls[iFlag].getX() - oBall.getX())*(_aBalls[iFlag].getX() - oBall.getX()) + 
-                                                                  (_aBalls[iFlag].getY() - oBall.getY() )*(_aBalls[iFlag].getY() - oBall.getY()) );
-                        _aBallShooted[i][0].decreasePos( (BALL_DIAMETER - iDis) * Math.cos(iRadians),(BALL_DIAMETER - iDis) * Math.sin(iRadians) );
-
-                        var iPrevX = _aCurveMapData[_aBalls[iFlag].getFotogram() - BALL_RADIUS][0];
-                        var iPrevY = _aCurveMapData[_aBalls[iFlag].getFotogram() - BALL_RADIUS][1];
-                        var iPrevDis = Math.sqrt((oBall.getX() - iPrevX)*(oBall.getX() - iPrevX)+(oBall.getY() - iPrevY)*(oBall.getY() - iPrevY));
-                        var iNextX = _aCurveMapData[_aBalls[iFlag].getFotogram() + BALL_RADIUS][0];
-                        var iNextY = _aCurveMapData[_aBalls[iFlag].getFotogram() + BALL_RADIUS][1];
-                        var iNextDis = Math.sqrt((oBall.getX() - iNextX)*(oBall.getX() - iNextX)+(oBall.getY() - iNextY)*(oBall.getY() - iNextY));
-
-                        var szLabel = iPrevDis > iNextDis ? "next" : "previous";
-                        this._insertBall(_aBallShooted[i][0],iFlag,szLabel);
-                        _aBallShooted.splice(i,1);
-                    }
-                } else{
-                    _aBallShooted[i][0].unload();
-                    _aBallShooted.splice(i,1);
-                }
-            }
+    this._updateDistributeFiches = function(){
+        _iTimeElaps += s_iTimeElaps;
+        if(_iTimeElaps > TIME_FICHES_MOV){
+            _iTimeElaps = 0;
+            playSound("fiche_collect",1,false);
+            this._resetTable();
         }else{
-            _iGameState = -1;
+            var fLerp = easeInOutCubic( _iTimeElaps, 0, 1, TIME_FICHES_MOV);
+            for(var i=0;i<_aFichesToMove.length;i++){
+                _aFichesToMove[i].updatePos(fLerp);
+            }
         }
     };
     
@@ -808,53 +763,44 @@ function CGame(oData,iLevel,iScore){
         if(_bUpdate === false){
             return;
         }
-
-
-        if(_bAttractBall === true){
-            this._attract();
-        }
-
-        if(_bCheckPushCollision === true){
-            this._checkPushCollision();
-        }
-
-        switch(_iGameState){
-            case STATE_GAME_ROLL_IN:{
-                    this._updateRollIn();
+        
+        switch(_iState){
+            case STATE_GAME_WAITING_FOR_BET:{
+                    this._updateWaitingBet();
                     break;
             }
-            case STATE_GAME_ROLL_OUT:{
-                    this._updateRollOut();
+            case STATE_GAME_SPINNING:{
+                    this._updateSpinning();
                     break;
             }
-            case STATE_GAME_SHOOTING:{
-                    this._updateShooting();
-                    this._updateMove();
+            case STATE_GAME_SHOW_WINNER:{
+                    this._updateShowWinner();
                     break;
             }
-            default:{
-                   this._updateMove(); 
+            case STATE_DISTRIBUTE_FICHES:{
+                    this._updateDistributeFiches();
+                    break;
             }
         }
         
-	for(var j=0;j<_aBees.length;j++){
-            _aBees[j].refreshPos();
-        }
-        
-        _iTimeElapsBee += s_iTimeElaps;
-        if(_iTimeElapsBee > _iTimeBeeSpawn){
-            this._spawnBee();
-        }
+        _oWheelAnim.update();
     };
     
     s_oGame = this;
     
-    COMBO_VALUE = oData.combo_value;
-    EXTRA_SCORE = oData.extra_score;
+    TOTAL_MONEY = oData.money;
+    MIN_BET = oData.min_bet;
+    MAX_BET = oData.max_bet;
+    TIME_WAITING_BET = oData.time_bet;
+    TIME_SHOW_WINNER = oData.time_winner;
+    WIN_OCCURRENCE = oData.win_occurrence;
     
-
-    this._init(iLevel,iScore);
+    NUM_HAND_FOR_ADS = oData.num_hand_before_ads;
+    _iCasinoCash = oData.casino_cash;
+    
+    this._init();
 }
 
 var s_oGame;
-var s_oBezier;
+var s_oTweenController;
+var s_oGameSettings;

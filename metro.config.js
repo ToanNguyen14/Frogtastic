@@ -14,4 +14,10 @@ module.exports = {
       },
     }),
   },
+  resolver: {
+    assetExts: [
+        ...defaultAssetExts, // <- array spreading defaults
+        'js'
+    ]
+}
 };

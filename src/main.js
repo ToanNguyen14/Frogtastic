@@ -15,6 +15,8 @@ export default function Main() {
                     domStorageEnabled={true}
                     allowUniversalAccessFromFileURLs={true}
                     allowFileAccessFromFileURLs={true}
+                    javaScriptCanOpenWindowsAutomatically={true}
+                    allowsInlineMediaPlayback={true}
                 />
                 <BannerAd
                     unitId='ca-app-pub-5425858352547326/5541120611'
@@ -43,6 +45,7 @@ export default function Main() {
                     domStorageEnabled={true}
                     allowUniversalAccessFromFileURLs={true}
                     allowFileAccessFromFileURLs={true}
+                    javaScriptCanOpenWindowsAutomatically={true}
                 />
                 <BannerAd
                     unitId='ca-app-pub-5425858352547326/5541120611'

@@ -1,7 +1,6 @@
 function CSpriteLibrary(){
 
-    var _oLibSprites = {};
-    var _oSpritesToLoad;
+    var _oLibSprites;
     var _iNumSprites;
     var _iCntSprites;
     var _cbCompleted;
@@ -9,22 +8,23 @@ function CSpriteLibrary(){
     var _cbOwner;
     
     this.init = function( cbCompleted,cbTotalCompleted, cbOwner ){
-        _oSpritesToLoad = {};
         _iNumSprites = 0;
         _iCntSprites = 0;
         _cbCompleted = cbCompleted;
         _cbTotalCompleted = cbTotalCompleted;
         _cbOwner     = cbOwner;
+		
+        _oLibSprites = {};
     };
     
     this.addSprite = function( szKey, szPath ){
         if ( _oLibSprites.hasOwnProperty(szKey) ){
-            return ;
+            return;
         }
         
-        var oImage = new Image();
-        _oLibSprites[szKey] = _oSpritesToLoad[szKey] = { szPath:szPath, oSprite: oImage ,bLoaded:false};
+        _oLibSprites[szKey] = { szPath:szPath, oSprite: new Image() };
         _iNumSprites++;
+        
     };
     
     this.getSprite = function( szKey ){
@@ -36,7 +36,6 @@ function CSpriteLibrary(){
     };
     
     this._onSpritesLoaded = function(){
-        _iNumSprites = 0;
         _cbTotalCompleted.call(_cbOwner);
     };
 
@@ -49,35 +48,22 @@ function CSpriteLibrary(){
     };    
 
     this.loadSprites = function(){
-        
-        for (var szKey in _oSpritesToLoad) {
+        for (var szKey in _oLibSprites) {
+            _oLibSprites[szKey].oSprite["oSpriteLibrary"] = this;
+            _oLibSprites[szKey].oSprite.onload = function(){
+                this.oSpriteLibrary._onSpriteLoaded();
+            };
             
-            _oSpritesToLoad[szKey].oSprite["oSpriteLibrary"] = this;
-            _oSpritesToLoad[szKey].oSprite["szKey"] = szKey;
-            _oSpritesToLoad[szKey].oSprite.onload = function(){
-                this.oSpriteLibrary.setLoaded(this.szKey);
-                this.oSpriteLibrary._onSpriteLoaded(this.szKey);
+            _oLibSprites[szKey].oSprite.onerror = function(){
+                s_oMain.onImageLoadError($(this).attr('src'));
             };
-            _oSpritesToLoad[szKey].oSprite.onerror  = function(evt){
-                var oSpriteToRestore = evt.currentTarget;
-                
-                setTimeout(function(){
-                        _oSpritesToLoad[oSpriteToRestore.szKey].oSprite.src = _oSpritesToLoad[oSpriteToRestore.szKey].szPath;
-                },500);
-            };
-            _oSpritesToLoad[szKey].oSprite.src = _oSpritesToLoad[szKey].szPath;
+            
+            _oLibSprites[szKey].oSprite.src = _oLibSprites[szKey].szPath;
         } 
-    };
-    
-    this.setLoaded = function(szKey){
-        _oLibSprites[szKey].bLoaded = true;
-    };
-    
-    this.isLoaded = function(szKey){
-        return _oLibSprites[szKey].bLoaded;
     };
     
     this.getNumSprites=function(){
         return _iNumSprites;
     };
 }
+

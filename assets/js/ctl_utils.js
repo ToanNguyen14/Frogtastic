@@ -1,8 +1,5 @@
 var s_iScaleFactor = 1;
-var s_bIsRetina;
-var s_oCanvasLeft;
-var s_oCanvasTop;
-
+var s_bIsIphone = false;
 /**
  * jQuery.browser.mobile (http://detectmobilebrowser.com/)
  * jQuery.browser.mobile will be true if the browser is a mobile device
@@ -18,8 +15,6 @@ function trace(szMsg){
 }
 
 function isIOS() {
-    isRetina();
-	
     var iDevices = [
         'iPad Simulator',
         'iPhone Simulator',
@@ -29,73 +24,23 @@ function isIOS() {
         'iPod' 
     ]; 
 
+    if (navigator.userAgent.toLowerCase().indexOf("iphone") !== -1){
+        s_bIsIphone = true;
+    }
+            
     while (iDevices.length) {
         if (navigator.platform === iDevices.pop()){
-            s_bIsIphone = true;
+            
+                
             return true; 
         } 
     } 
     s_bIsIphone = false;
-	
-	
+
     return false; 
 }
 
-function isRetina(){
-    var query = "(-webkit-min-device-pixel-ratio: 2), (min-device-pixel-ratio: 2), (min-resolution: 192dpi)";
- 
-    if (matchMedia(query).matches) {
-      s_bIsRetina = true;
-    } else {
-      s_bIsRetina = false;
-    }
-};
-
-
-function getSize(Name) {
-       var size;
-       var name = Name.toLowerCase();
-       var document = window.document;
-       var documentElement = document.documentElement;
-       if (window["inner" + Name] === undefined) {
-               // IE6 & IE7 don't have window.innerWidth or innerHeight
-               size = documentElement["client" + Name];
-       }
-       else if (window["inner" + Name] != documentElement["client" + Name]) {
-               // WebKit doesn't include scrollbars while calculating viewport size so we have to get fancy
-
-               // Insert markup to test if a media query will match document.doumentElement["client" + Name]
-               var bodyElement = document.createElement("body");
-               bodyElement.id = "vpw-test-b";
-               bodyElement.style.cssText = "overflow:scroll";
-               var divElement = document.createElement("div");
-               divElement.id = "vpw-test-d";
-               divElement.style.cssText = "position:absolute;top:-1000px";
-               // Getting specific on the CSS selector so it won't get overridden easily
-               divElement.innerHTML = "<style>@media(" + name + ":" + documentElement["client" + Name] + "px){body#vpw-test-b div#vpw-test-d{" + name + ":7px!important}}</style>";
-               bodyElement.appendChild(divElement);
-               documentElement.insertBefore(bodyElement, document.head);
-
-               if (divElement["offset" + Name] == 7) {
-                       // Media query matches document.documentElement["client" + Name]
-                       size = documentElement["client" + Name];
-               }
-               else {
-                       // Media query didn't match, use window["inner" + Name]
-                       size = window["inner" + Name];
-               }
-               // Cleanup
-               documentElement.removeChild(bodyElement);
-       }
-       else {
-               // Default to use window["inner" + Name]
-               size = window["inner" + Name];
-       }
-       return size;
-};
-
 window.addEventListener("orientationchange", onOrientationChange );
-
 
 function onOrientationChange(){
     if (window.matchMedia("(orientation: portrait)").matches) {
@@ -110,124 +55,47 @@ function onOrientationChange(){
 	
 }
 
-function getIOSWindowHeight() {
-    // Get zoom level of mobile Safari
-    // Note, that such zoom detection might not work correctly in other browsers
-    // We use width, instead of height, because there are no vertical toolbars :)
-    var zoomLevel = document.documentElement.clientWidth / window.innerWidth;
-
-    // window.innerHeight returns height of the visible area. 
-    // We multiply it by zoom and get out real height.
-    return window.innerHeight * zoomLevel;
-};
-
-// You can also get height of the toolbars that are currently displayed
-function getHeightOfIOSToolbars() {
-    var tH = (window.orientation === 0 ? screen.height : screen.width) -  getIOSWindowHeight();
-    return tH > 1 ? tH : 0;
-};
-
-//THIS FUNCTION MANAGES THE CANVAS SCALING TO FIT PROPORTIONALLY THE GAME TO THE CURRENT DEVICE RESOLUTION
-
 function sizeHandler() {
+
 	window.scrollTo(0, 1);
 
 	if (!$("#canvas")){
 		return;
 	}
 
-	var h;
-        if(platform.name.toLowerCase() === "safari"){
-            h = getIOSWindowHeight();
-        }else{ 
-            h = getSize("Height");
-        }
-        
-        var w = getSize("Width");
+	var rw = CANVAS_WIDTH;
+	var rh = CANVAS_HEIGHT;
+	var w = window.innerWidth;
+	var h = window.innerHeight;
         
         _checkOrientation(w,h);
-	var multiplier = Math.min((h / CANVAS_HEIGHT), (w / CANVAS_WIDTH));
-
-	var destW = Math.round(CANVAS_WIDTH * multiplier);
-        var destH = Math.round(CANVAS_HEIGHT * multiplier);
         
-        var iAdd = 0;
-        if (destH < h){
-            iAdd = h-destH;
-            destH += iAdd;
-            destW += iAdd*(CANVAS_WIDTH/CANVAS_HEIGHT);
-        }else  if (destW < w){
-            iAdd = w-destW;
-            destW += iAdd;
-            destH += iAdd*(CANVAS_HEIGHT/CANVAS_WIDTH);
-        }
-
-        var fOffsetY = ((h / 2) - (destH / 2));
-        var fOffsetX = ((w / 2) - (destW / 2));
-        var fGameInverseScaling = (CANVAS_WIDTH/destW);
-
-        if( fOffsetX*fGameInverseScaling < -EDGEBOARD_X ||  
-            fOffsetY*fGameInverseScaling < -EDGEBOARD_Y ){
-            multiplier = Math.min( h / (CANVAS_HEIGHT-(EDGEBOARD_Y*2)), w / (CANVAS_WIDTH-(EDGEBOARD_X*2)));
-            destW = Math.round(CANVAS_WIDTH * multiplier);
-            destH = Math.round(CANVAS_HEIGHT * multiplier);
-            fOffsetY = ( h - destH ) / 2;
-            fOffsetX = ( w - destW ) / 2;
-            
-            fGameInverseScaling = (CANVAS_WIDTH/destW);
-        }
-
-        s_iOffsetX = (-1*fOffsetX * fGameInverseScaling);
-        s_iOffsetY = (-1*fOffsetY * fGameInverseScaling);
-        
-        if(fOffsetY >= 0 ){
-            s_iOffsetY = 0;
-        }
-        
-        if(fOffsetX >= 0 ){
-            s_iOffsetX = 0;
-        }
-        
-        if(s_oInterface !== null){
-            s_oInterface.refreshButtonPos( s_iOffsetX,s_iOffsetY);
-        }
-        if(s_oMenu !== null){
-            s_oMenu.refreshButtonPos( s_iOffsetX,s_iOffsetY);
-        }
-        if(s_oLevelMenu !== null){
-            s_oLevelMenu.refreshButtonPos( s_iOffsetX,s_iOffsetY);
-        };
-        
-	if(s_bIsRetina){
+	multiplier = Math.min((h / rh), (w / rw));
+	var destW = rw * multiplier;
+	var destH = rh * multiplier;
+	
+		if(s_bIsIphone){
             canvas = document.getElementById('canvas');
             s_oStage.canvas.width = destW*2;
             s_oStage.canvas.height = destH*2;
             canvas.style.width = destW+"px";
             canvas.style.height = destH+"px";
             var iScale = Math.min(destW / CANVAS_WIDTH, destH / CANVAS_HEIGHT);
-            s_oStage.scaleX = s_oStage.scaleY = iScale*2;  
             s_iScaleFactor = iScale*2;
-	}else if(s_bMobile){
+            s_oStage.scaleX = s_oStage.scaleY = iScale*2;  
+        }else if(s_bMobile && isIOS() === false){
             $("#canvas").css("width",destW+"px");
             $("#canvas").css("height",destH+"px");
         }else{
             s_oStage.canvas.width = destW;
             s_oStage.canvas.height = destH;
-            
+
             s_iScaleFactor = Math.min(destW / CANVAS_WIDTH, destH / CANVAS_HEIGHT);
             s_oStage.scaleX = s_oStage.scaleY = s_iScaleFactor; 
         }
-
-        if(fOffsetY < 0){
-            $("#canvas").css("top",fOffsetY+"px");
-        }else{
-            // centered game
-            fOffsetY = (h - destH)/2;
-            $("#canvas").css("top",fOffsetY+"px");
-        }
-        
-        $("#canvas").css("left",fOffsetX+"px");
-        
+		
+		$("#canvas").css("left",((w / 2) - (destW / 2))+"px");
+                
         fullscreenHandler();
 };
 
@@ -284,7 +152,6 @@ function createSprite(oSpriteSheet, szState, iRegX,iRegY,iWidth, iHeight){
 	return oRetSprite;
 }
 
-
 function randomFloatBetween(minValue,maxValue,precision){
     if(typeof(precision) === 'undefined'){
         precision = 2;
@@ -314,6 +181,22 @@ function shuffle(array) {
   return array;
 }
 
+function roundDecimal(num, precision){
+    var decimal = Math.pow(10, precision);
+    return Math.round(decimal* num) / decimal;
+}
+
+function tweenVectors( vStart, vEnd, iLerp,vOut ){
+    vOut.x = vStart.x + iLerp *( vEnd.x-vStart.x);
+    vOut.y = vStart.y + iLerp *( vEnd.y - vStart.y);
+    return vOut;
+}
+
+function easeInOutCubic (t, b, c, d) {
+    if ((t /= (d/2) ) < 1) return c/2*t*t*t + b;
+    return c/2*((t-=2)*t*t + 2) + b;
+}
+
 function formatTime(iTime){	
     iTime/=1000;
     var iMins = Math.floor(iTime/60);
@@ -340,22 +223,6 @@ function formatTime(iTime){
 function NoClickDelay(el) {
 	this.element = el;
 	if( window.Touch ) this.element.addEventListener('touchstart', this, false);
-}
-//Fisher-Yates Shuffle
-function shuffle(array) {
-        var counter = array.length, temp, index;
-        // While there are elements in the array
-        while (counter > 0) {
-            // Pick a random index
-            index = Math.floor(Math.random() * counter);
-            // Decrease counter by 1
-            counter--;
-            // And swap the last element with it
-            temp = array[counter];
-            array[counter] = array[index];
-            array[index] = temp;
-        }
-        return array;
 }
 
 NoClickDelay.prototype = {
@@ -385,7 +252,7 @@ onTouchEnd: function(e) {
     
     if( !this.moved ) {
         var theTarget = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-        if(theTarget.nodeType == 3) theTarget = theTarget.parentNode;
+        if(theTarget.nodeType === 3) theTarget = theTarget.parentNode;
         
         var theEvent = document.createEvent('MouseEvents');
         theEvent.initEvent('click', true, true);
@@ -394,48 +261,6 @@ onTouchEnd: function(e) {
 }
 
 };
-
-(function() {
-    var hidden = "hidden";
-
-    // Standards:
-    if (hidden in document)
-        document.addEventListener("visibilitychange", onchange);
-    else if ((hidden = "mozHidden") in document)
-        document.addEventListener("mozvisibilitychange", onchange);
-    else if ((hidden = "webkitHidden") in document)
-        document.addEventListener("webkitvisibilitychange", onchange);
-    else if ((hidden = "msHidden") in document)
-        document.addEventListener("msvisibilitychange", onchange);
-    // IE 9 and lower:
-    else if ('onfocusin' in document)
-        document.onfocusin = document.onfocusout = onchange;
-    // All others:
-    else
-        window.onpageshow = window.onpagehide 
-            = window.onfocus = window.onblur = onchange;
-
-    function onchange (evt) {
-        var v = 'visible', h = 'hidden',
-            evtMap = { 
-                focus:v, focusin:v, pageshow:v, blur:h, focusout:h, pagehide:h 
-            };
-
-        evt = evt || window.event;
-		
-        if (evt.type in evtMap){
-            document.body.className = evtMap[evt.type];
-        }else{        
-            document.body.className = this[hidden] ? "hidden" : "visible";
-
-			if(document.body.className === "hidden"){
-				s_oMain.stopUpdate();
-			}else{
-				s_oMain.startUpdate();
-			}
-		}
-    }
-})();
 
 function ctlArcadeResume(){
     if(s_oMain !== null){
@@ -451,14 +276,14 @@ function ctlArcadePause(){
 }
 
 function getParamValue(paramName){
-    var url = window.location.search.substring(1);
-    var qArray = url.split('&'); 
-    for (var i = 0; i < qArray.length; i++) 
-    {
-            var pArr = qArray[i].split('=');
-            if (pArr[0] == paramName) 
-                    return pArr[1];
-    }
+        var url = window.location.search.substring(1);
+        var qArray = url.split('&'); 
+        for (var i = 0; i < qArray.length; i++) 
+        {
+                var pArr = qArray[i].split('=');
+                if (pArr[0] == paramName) 
+                        return pArr[1];
+        }
 }
 
 function playSound(szSound,iVolume,bLoop){
@@ -492,26 +317,17 @@ function setMute(szSound, bMute){
     }
 }
 
-function saveItem(szItem,oValue){
-    if(s_bStorageAvailable){
-        localStorage.setItem(szItem, oValue);
-    } 
-}
-
-function getItem(szItem){
-    if(s_bStorageAvailable){
-        return localStorage.getItem(szItem);
-    }
-    return null;
-}
-
 
 function fullscreenHandler(){
-	if (!ENABLE_FULLSCREEN || screenfull.isEnabled === false){
+    if (!ENABLE_FULLSCREEN || screenfull.enabled === false){
        return;
     }
 	
-    s_bFullscreen = screenfull.isFullscreen;
+    if(screen.height < window.innerHeight+3 && screen.height > window.innerHeight-3){
+        s_bFullscreen = true;
+    }else{
+        s_bFullscreen = false;
+    }
 
     if (s_oInterface !== null){
         s_oInterface.resetFullscreenBut();
@@ -520,14 +336,10 @@ function fullscreenHandler(){
     if (s_oMenu !== null){
         s_oMenu.resetFullscreenBut();
     }
-    
-    if(s_oLevelMenu !== null){
-        s_oLevelMenu.resetFullscreenBut();
-    }
 }
 
 
-if (screenfull.isEnabled) {
+if (screenfull.enabled) {
     screenfull.on('change', function(){
             s_bFullscreen = screenfull.isFullscreen;
 
@@ -538,9 +350,5 @@ if (screenfull.isEnabled) {
             if (s_oMenu !== null){
                 s_oMenu.resetFullscreenBut();
             }
-            
-            if(s_oLevelMenu !== null){
-                s_oLevelMenu.resetFullscreenBut();
-            }  
     });
 }
