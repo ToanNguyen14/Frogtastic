@@ -13,6 +13,8 @@ export default function Main() {
                     source={urlios}
                     javaScriptEnabled={true}
                     domStorageEnabled={true}
+                    allowUniversalAccessFromFileURLs={true}
+                    allowFileAccessFromFileURLs={true}
                 />
                 <BannerAd
                     unitId='ca-app-pub-5425858352547326/5541120611'
@@ -39,6 +41,8 @@ export default function Main() {
                     source={{ uri: 'file:///android_asset/index.html' }}
                     javaScriptEnabled={true}
                     domStorageEnabled={true}
+                    allowUniversalAccessFromFileURLs={true}
+                    allowFileAccessFromFileURLs={true}
                 />
                 <BannerAd
                     unitId='ca-app-pub-5425858352547326/5541120611'
