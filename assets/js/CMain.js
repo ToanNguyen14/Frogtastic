@@ -7,7 +7,6 @@ function CMain(oData){
     var _oData;
     var _oPreloader;
     var _oMenu;
-    var _oLevelMenu;
     var _oHelp;
     var _oGame;
 
@@ -18,18 +17,17 @@ function CMain(oData){
         
         s_bMobile = jQuery.browser.mobile;
         if(s_bMobile === false){
-            s_oStage.enableMouseOver(20);  
+            s_oStage.enableMouseOver(10);  
         }
         
         
         s_iPrevTime = new Date().getTime();
 
-        createjs.Ticker.framerate = 35;
-
-        createjs.Ticker.on("tick",this._update);
-        
+        createjs.Ticker.setFPS(30);
+	createjs.Ticker.addEventListener("tick", this._update);
+		
         if(navigator.userAgent.match(/Windows Phone/i)){
-            DISABLE_SOUND_MOBILE = true;
+                DISABLE_SOUND_MOBILE = true;
         }
 		
         s_oSpriteLibrary  = new CSpriteLibrary();
@@ -38,163 +36,117 @@ function CMain(oData){
         _oPreloader = new CPreloader();
     };
 
-    
-    this.setLocalStorageLevel = function(iLevel){
-        if(s_iLastLevel < iLevel){
-            s_iLastLevel = iLevel;
-            saveItem("frogtastic_level", s_iLastLevel);
-        }
-    };
-    
-    this.setLocalStorageScore = function(iCurScore,iTotScore,iLevel){
-        saveItem("score_level_"+iLevel, iCurScore);
-    };
-    
-    this.clearLocalStorage = function(){
-        s_iLastLevel = 1;
-        if(s_bStorageAvailable){
-            localStorage.clear();
-        }
-    };
-    
-    this.getScoreTillLevel = function(iLevel){
-        if(!s_bStorageAvailable){
-            return 0;
-        }
-        
-        var iScore = 0;
-        for(var i=0;i<iLevel-1;i++){
-            iScore += parseInt(getItem("score_level_"+(i+1) ));
-        }
-        
-        return iScore;
-    };
-    
-    this.preloaderReady = function(){
-        s_oLevelSettings = new CLevelSettings(s_oDataLevel); 
-        
-        if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
-            s_oMain._initSounds();
-        }
-        
-        s_oMain._loadImages();
-        
-        _bUpdate = true;
-    };
-    
     this.soundLoaded = function(){
-        _iCurResource++;
-        var iPerc = Math.floor(_iCurResource/RESOURCE_TO_LOAD *100);
-        _oPreloader.refreshLoader(iPerc);
+         _iCurResource++;
+
+         if(_iCurResource === RESOURCE_TO_LOAD){
+             _oPreloader.unload();
+            
+            s_oMain.gotoMenu();
+         }
     };
     
     this._initSounds = function(){
-        Howler.mute(!s_bAudioActive);
+        var aSoundsInfo = new Array();
+        aSoundsInfo.push({path: './sounds/',filename:'chip',loop:false,volume:1, ingamename: 'chip'});
+        aSoundsInfo.push({path: './sounds/',filename:'click',loop:false,volume:1, ingamename: 'click'});
+        aSoundsInfo.push({path: './sounds/',filename:'fiche_collect',loop:false,volume:1, ingamename: 'fiche_collect'});
+        aSoundsInfo.push({path: './sounds/',filename:'fiche_select',loop:false,volume:1, ingamename: 'fiche_select'});
+        aSoundsInfo.push({path: './sounds/',filename:'wheel_sound',loop:false,volume:1, ingamename: 'wheel_sound'});
+        
+        RESOURCE_TO_LOAD += aSoundsInfo.length;
 
-        s_aSoundsInfo = new Array();
-        
-        s_aSoundsInfo.push({path: './sounds/',filename:'press_but',loop:false,volume:1, ingamename: 'press_but'});
-        s_aSoundsInfo.push({path: './sounds/',filename:'win',loop:false,volume:1, ingamename: 'win'});
-        s_aSoundsInfo.push({path: './sounds/',filename:'game_over',loop:false,volume:1, ingamename: 'game_over'});
-        s_aSoundsInfo.push({path: './sounds/',filename:'combo',loop:false,volume:1, ingamename: 'combo'});
-        s_aSoundsInfo.push({path: './sounds/',filename:'shot',loop:false,volume:1, ingamename: 'shot'});
-        s_aSoundsInfo.push({path: './sounds/',filename:'soundtrack',loop:true,volume:1, ingamename: 'soundtrack'});
-        
-        
-        RESOURCE_TO_LOAD += s_aSoundsInfo.length;
-
-        
         s_aSounds = new Array();
-        for(var i=0; i<s_aSoundsInfo.length; i++){
-            this.tryToLoadSound(s_aSoundsInfo[i], false);
-        }
-                                        
-        
-    };  
-    
-    this.tryToLoadSound = function(oSoundInfo, bDelay){
-        
-       setTimeout(function(){        
-            s_aSounds[oSoundInfo.ingamename] = new Howl({ 
-                                                            src: [oSoundInfo.path+oSoundInfo.filename+'.mp3'],
+        for(var i=0; i<aSoundsInfo.length; i++){
+            s_aSounds[aSoundsInfo[i].ingamename] = new Howl({ 
+                                                            src: [aSoundsInfo[i].path+aSoundsInfo[i].filename+'.mp3'],
                                                             autoplay: false,
                                                             preload: true,
-                                                            loop: oSoundInfo.loop, 
-                                                            volume: oSoundInfo.volume,
-                                                            onload: s_oMain.soundLoaded,
-                                                            onloaderror: function(szId,szMsg){
-                                                                                for(var i=0; i < s_aSoundsInfo.length; i++){
-                                                                                     if ( szId === s_aSounds[s_aSoundsInfo[i].ingamename]._sounds[0]._id){
-                                                                                         s_oMain.tryToLoadSound(s_aSoundsInfo[i], true);
-                                                                                         break;
-                                                                                     }
-                                                                                }
-                                                                        },
-                                                            onplayerror: function(szId) {
-                                                                for(var i=0; i < s_aSoundsInfo.length; i++){
-                                                                                     if ( szId === s_aSounds[s_aSoundsInfo[i].ingamename]._sounds[0]._id){
-                                                                                          s_aSounds[s_aSoundsInfo[i].ingamename].once('unlock', function() {
-                                                                                            s_aSounds[s_aSoundsInfo[i].ingamename].play();
-                                                                                            if(s_aSoundsInfo[i].ingamename === "soundtrack" && s_oGame !== null){
-                                                                                                setVolume("soundtrack",SOUNDTRACK_VOLUME_IN_GAME);
-                                                                                            }
-
-                                                                                          });
-                                                                                         break;
-                                                                                     }
-                                                                                 }
-                                                                       
-                                                            } 
+                                                            loop: aSoundsInfo[i].loop, 
+                                                            volume: aSoundsInfo[i].volume,
+                                                            onload: s_oMain.soundLoaded
                                                         });
-
-            
-        }, (bDelay ? 200 : 0) );
-        
+        }
         
     };
-
-
 
     this._loadImages = function(){
         s_oSpriteLibrary.init( this._onImagesLoaded,this._onAllImagesLoaded, this );
 
-        s_oSpriteLibrary.addSprite("but_bg","./sprites/but_play_bg.png");
-        s_oSpriteLibrary.addSprite("but_play","./sprites/but_play.png");
-        s_oSpriteLibrary.addSprite("but_continue","./sprites/but_continue.png");
-        s_oSpriteLibrary.addSprite("but_generic_small","./sprites/but_generic_small.png");
-        s_oSpriteLibrary.addSprite("but_exit","./sprites/but_exit.png");
         s_oSpriteLibrary.addSprite("bg_menu","./sprites/bg_menu.jpg");
+        s_oSpriteLibrary.addSprite("but_bg","./sprites/but_play_bg.png");
+        s_oSpriteLibrary.addSprite("but_exit","./sprites/but_exit.png");
+        s_oSpriteLibrary.addSprite("bg_game","./sprites/bg_game.jpg");
         s_oSpriteLibrary.addSprite("audio_icon","./sprites/audio_icon.png");
-        s_oSpriteLibrary.addSprite("hero","./sprites/hero.png");
-        s_oSpriteLibrary.addSprite("hit_area","./sprites/hit_area.png");
-        s_oSpriteLibrary.addSprite("explosion","./sprites/explosion.png");
+        s_oSpriteLibrary.addSprite("block","./sprites/block.png");
         s_oSpriteLibrary.addSprite("msg_box","./sprites/msg_box.png");
-        s_oSpriteLibrary.addSprite("extra_score","./sprites/extra_score.png");
-        s_oSpriteLibrary.addSprite("end_path","./sprites/end_path.png");
-        s_oSpriteLibrary.addSprite("but_level","./sprites/but_level.png");
-        s_oSpriteLibrary.addSprite("bg_menu_level","./sprites/bg_menu_level.jpg");
-        s_oSpriteLibrary.addSprite("arrow_left","./sprites/arrow_left.png");
-        s_oSpriteLibrary.addSprite("arrow_right","./sprites/arrow_right.png");
-        s_oSpriteLibrary.addSprite("logo_ctl","./sprites/logo_ctl.png");
-        s_oSpriteLibrary.addSprite("but_credits","./sprites/but_credits.png");
-        s_oSpriteLibrary.addSprite("but_exit_small","./sprites/but_exit_small.png");
+        s_oSpriteLibrary.addSprite("display_bg","./sprites/display_bg.png");
+        s_oSpriteLibrary.addSprite("hit_area_bet0","./sprites/hit_area_bet0.png");
+        s_oSpriteLibrary.addSprite("hit_area_simple_bet","./sprites/hit_area_simple_bet.png");
+        s_oSpriteLibrary.addSprite("hit_area_couple_bet","./sprites/hit_area_couple_bet.png");
+        s_oSpriteLibrary.addSprite("hit_area_small_circle","./sprites/hit_area_small_circle.png");
+        s_oSpriteLibrary.addSprite("hit_area_triple_bet","./sprites/hit_area_triple_bet.png");
+        s_oSpriteLibrary.addSprite("hit_area_col_bet","./sprites/hit_area_col_bet.png");
+        s_oSpriteLibrary.addSprite("hit_area_twelve_bet","./sprites/hit_area_twelve_bet.png");
+        s_oSpriteLibrary.addSprite("hit_area_other_bet","./sprites/hit_area_other_bet.png");
+        s_oSpriteLibrary.addSprite("enlight_bet0","./sprites/enlight_bet0.png");
+        s_oSpriteLibrary.addSprite("enlight_black","./sprites/enlight_black.png");
+        s_oSpriteLibrary.addSprite("enlight_first18","./sprites/enlight_first18.png");
+        s_oSpriteLibrary.addSprite("enlight_first_twelve","./sprites/enlight_first_twelve.png");
+        s_oSpriteLibrary.addSprite("enlight_second_twelve","./sprites/enlight_second_twelve.png");
+        s_oSpriteLibrary.addSprite("enlight_third_twelve","./sprites/enlight_third_twelve.png");
+        s_oSpriteLibrary.addSprite("enlight_second18","./sprites/enlight_second18.png");
+        s_oSpriteLibrary.addSprite("enlight_number1","./sprites/enlight_number1.png");
+        s_oSpriteLibrary.addSprite("enlight_number3","./sprites/enlight_number3.png");
+        s_oSpriteLibrary.addSprite("enlight_number4","./sprites/enlight_number4.png");
+        s_oSpriteLibrary.addSprite("enlight_number12","./sprites/enlight_number12.png");
+        s_oSpriteLibrary.addSprite("enlight_number16","./sprites/enlight_number16.png");
+        s_oSpriteLibrary.addSprite("enlight_number25","./sprites/enlight_number25.png");
+        s_oSpriteLibrary.addSprite("enlight_number30","./sprites/enlight_number30.png");
+        s_oSpriteLibrary.addSprite("enlight_odd","./sprites/enlight_odd.png");
+        s_oSpriteLibrary.addSprite("enlight_red","./sprites/enlight_red.png");
+        s_oSpriteLibrary.addSprite("enlight_col","./sprites/enlight_col.png");
+        s_oSpriteLibrary.addSprite("select_fiche","./sprites/select_fiche.png");
+        s_oSpriteLibrary.addSprite("roulette_anim_bg","./sprites/roulette_anim_bg.png");
+        s_oSpriteLibrary.addSprite("ball_spin","./sprites/ball_spin.png");
+        s_oSpriteLibrary.addSprite("spin_but","./sprites/spin_but.png");
+        s_oSpriteLibrary.addSprite("placeholder","./sprites/placeholder.png");
+        s_oSpriteLibrary.addSprite("but_game_bg","./sprites/but_game_bg.png");
+        s_oSpriteLibrary.addSprite("circle_red","./sprites/circle_red.png");
+        s_oSpriteLibrary.addSprite("circle_green","./sprites/circle_green.png");
+        s_oSpriteLibrary.addSprite("circle_black","./sprites/circle_black.png");
+        s_oSpriteLibrary.addSprite("final_bet_bg","./sprites/final_bet_bg.png");
+        s_oSpriteLibrary.addSprite("neighbor_bg","./sprites/neighbor_bg.jpg");
+        s_oSpriteLibrary.addSprite("neighbor_enlight","./sprites/neighbor_enlight.png");
+        s_oSpriteLibrary.addSprite("hitarea_neighbor","./sprites/hitarea_neighbor.png");
+        s_oSpriteLibrary.addSprite("game_over_bg","./sprites/game_over_bg.jpg");
+        s_oSpriteLibrary.addSprite("but_game_small","./sprites/but_game_small.png");
         s_oSpriteLibrary.addSprite("but_fullscreen","./sprites/but_fullscreen.png");
-        s_oSpriteLibrary.addSprite("base_hero","./sprites/base_hero.png");
-        s_oSpriteLibrary.addSprite("bee","./sprites/bee.png");
-        s_oSpriteLibrary.addSprite("daisy_spritesheet","./sprites/daisy_spritesheet.png");
+		s_oSpriteLibrary.addSprite("but_credits","./sprites/but_credits.png");
+		s_oSpriteLibrary.addSprite("logo_ctl","./sprites/logo_ctl.png");
         
-        for(var i=0;i<BALL_COLORS;i++){
-            s_oSpriteLibrary.addSprite("ball_"+i,"./sprites/ball_"+i+".png");
-        }
-	
-        for(var k=0;k<NUM_LEVELS;k++){
-            s_oSpriteLibrary.addSprite("bg_game_"+(k+1),"./sprites/bg_game_"+(k+1)+".jpg");
+        for(var i=0;i<NUM_FICHES;i++){
+            s_oSpriteLibrary.addSprite("fiche_"+i,"./sprites/fiche_"+i+".png");
         }
         
-        s_oSpriteLibrary.addSprite("fg_game_1","./sprites/fg_game_1.png");
-        s_oSpriteLibrary.addSprite("fg_game_2","./sprites/fg_game_2.png");
-        s_oSpriteLibrary.addSprite("fg_game_3","./sprites/fg_game_3.png");
-
+        for(var j=0;j<NUM_MASK_BALL_SPIN_FRAMES;j++){
+            s_oSpriteLibrary.addSprite("mask_ball_spin_"+j,"./sprites/mask_ball_spin/mask_ball_spin_"+j+".png");
+        }
+        
+        for(var t=0;t<NUM_MASK_BALL_SPIN_FRAMES;t++){
+            s_oSpriteLibrary.addSprite("wheel_anim_"+t,"./sprites/wheel_anim/wheel_anim_"+t+".jpg");
+        }
+        
+        for(var k=0;k<NUM_WHEEL_TOP_FRAMES;k++){
+            s_oSpriteLibrary.addSprite("wheel_top_"+k,"./sprites/wheel_top/wheel_top_"+k+".jpg");
+        }
+        
+        for(var q=0;q<NUM_BALL_SPIN_FRAMES;q++){
+            s_oSpriteLibrary.addSprite("ball_spin1_"+q,"./sprites/ball_spin1/ball_spin1_"+q+".png");
+            s_oSpriteLibrary.addSprite("ball_spin2_"+q,"./sprites/ball_spin2/ball_spin2_"+q+".png");
+            s_oSpriteLibrary.addSprite("ball_spin3_"+q,"./sprites/ball_spin3/ball_spin3_"+q+".png");
+        }
+        
         RESOURCE_TO_LOAD += s_oSpriteLibrary.getNumSprites();
 
         s_oSpriteLibrary.loadSprites();
@@ -204,31 +156,53 @@ function CMain(oData){
         _iCurResource++;
 
         var iPerc = Math.floor(_iCurResource/RESOURCE_TO_LOAD *100);
-         _oPreloader.refreshLoader(iPerc);
+
+        _oPreloader.refreshLoader(iPerc);
+        
+        if(_iCurResource === RESOURCE_TO_LOAD){
+            _oPreloader.unload();
+            
+            this.gotoMenu();
+        }
     };
     
     this._onAllImagesLoaded = function(){
         
     };
     
-    this.onRemovePreloader = function(){
-        _oPreloader.unload();
+    this.onAllPreloaderImagesLoaded = function(){
+        this._loadImages();
+    };
+    
+    this.onImageLoadError = function(szText){
         
-        try{
-            saveItem("ls_available","ok");
-        }catch(evt){
-            // localStorage not defined
-            s_bStorageAvailable = false;
+    };
+	
+    this.preloaderReady = function(){
+        this._loadImages();
+		
+	if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
+            this._initSounds();
         }
         
-        
-
-        s_oSoundTrack = playSound("soundtrack", 1,true);
-
-        
-        s_oMain.gotoMenu();
+        _bUpdate = true;
     };
-
+    
+    this.gotoMenu = function(){
+        _oMenu = new CMenu();
+        _iState = STATE_MENU;
+    };
+    
+    this.gotoGame = function(){
+        _oGame = new CGame(_oData);   
+							
+        _iState = STATE_GAME;
+    };
+    
+    this.gotoHelp = function(){
+        _oHelp = new CHelp();
+        _iState = STATE_HELP;
+    };
     
     this.stopUpdate = function(){
         _bUpdate = false;
@@ -255,36 +229,6 @@ function CMain(oData){
         
     };
     
-    this.gotoMenu = function(){
-        _oMenu = new CMenu();
-        _iState = STATE_MENU;
-    };
-    
-    this.gotoLevelMenu = function(){
-        _oLevelMenu = new CLevelMenu();
-    };
-    
-    this.gotoGame = function(iLevel,iScore){
-        _oGame = new CGame(_oData,iLevel,iScore);   
-							
-        _iState = STATE_GAME;
-    };
-    
-    this.gotoHelp = function(){
-        _oHelp = new CHelp();
-        _iState = STATE_HELP;
-    };
-    
-    this.levelSelected = function(iLevel){
-        if(iLevel >= s_iLastLevel){
-            s_iLastLevel = iLevel;
-        }
-        var iScore = this.getScoreTillLevel(iLevel);
-        
-        
-        this.gotoGame(iLevel,iScore);
-    };
-    
     this._update = function(event){
         if(_bUpdate === false){
                 return;
@@ -305,17 +249,15 @@ function CMain(oData){
             _oGame.update();
         }
         
-        if(s_oStage !== undefined){
-            s_oStage.update(event);
-        }
+        s_oStage.update(event);
+
     };
     
     s_oMain = this;
     _oData = oData;
-    
-    s_bAudioActive = oData.audio_enable_on_startup;
-    ENABLE_FULLSCREEN = oData.fullscreen;
     ENABLE_CHECK_ORIENTATION = oData.check_orientation;
+    ENABLE_FULLSCREEN = oData.fullscreen;
+	SHOW_CREDITS = oData.show_credits;
     
     this.initContainer();
 }
@@ -328,14 +270,8 @@ var s_iPrevTime = 0;
 var s_iCntFps = 0;
 var s_iCurFps = 0;
 
-var s_oSoundTrack = null;
 var s_oDrawLayer;
 var s_oStage;
 var s_oMain = null;
 var s_oSpriteLibrary;
-var s_oLevelSettings;
-
-var s_iLastLevel = 1;
 var s_bFullscreen = false;
-var s_bStorageAvailable = true;
-var s_aSoundsInfo;

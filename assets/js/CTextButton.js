@@ -1,92 +1,90 @@
-function CTextButton(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,oParentContainer){
+function CTextButton(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,bAttach){
     var _bDisable;
-    var _iCurScale;
     var _iWidth;
     var _iHeight;
+    var _aListeners;
     var _aCbCompleted;
     var _aCbOwner;
-    var _oListenerDown;
-    var _oListenerUp;
     var _oParams;
-    
     var _oButton;
-
+    var _oTextBack;
     var _oText;
     var _oButtonBg;
-    var _oParentContainer = oParentContainer;
     
-    this._init = function(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize){
+    this._init =function(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,bAttach){
         _bDisable = false;
-        _iCurScale = 1;
         _aCbCompleted=new Array();
         _aCbOwner =new Array();
 
         _oButtonBg = createBitmap( oSprite);
 	_iWidth = oSprite.width;
         _iHeight = oSprite.height;
+		
+        var iStepShadow = Math.ceil(iFontSize/20);
 
-        
+        _oTextBack = new createjs.Text(szText,iFontSize+"px "+szFont, "#000000");
+        var oBounds = _oTextBack.getBounds();
+        _oTextBack.textAlign = "center";
+        _oTextBack.textBaseline = "alphabetic";
+        _oTextBack.x = oSprite.width/2 + iStepShadow;
+        _oTextBack.y = Math.floor((oSprite.height)/2) +(oBounds.height/3) + iStepShadow;
+
+        _oText = new createjs.Text(szText,iFontSize+"px "+szFont, szColor);
+        _oText.textAlign = "center";
+        _oText.textBaseline = "alphabetic";  
+        _oText.x = oSprite.width/2;
+        _oText.y = Math.floor((oSprite.height)/2) +(oBounds.height/3);
 
         _oButton = new createjs.Container();
         _oButton.x = iXPos;
         _oButton.y = iYPos;
         _oButton.regX = oSprite.width/2;
         _oButton.regY = oSprite.height/2;
-	if (!s_bMobile){
+		if (!s_bMobile){
             _oButton.cursor = "pointer";
 	}
-        _oButton.addChild(_oButtonBg,_oText);
-
-        _oParentContainer.addChild(_oButton);
+        _oButton.addChild(_oButtonBg,_oTextBack,_oText);
         
-        _oText = new CTLText(_oButton, 
-                    10, 5, oSprite.width-20, oSprite.height-10, 
-                    iFontSize, "center", szColor, szFont, 1.2,
-                    0, 0,
-                    szText,
-                    true, true, false,
-                    false );
-                    
+        if(bAttach !== false){
+            s_oStage.addChild(_oButton);
+        }
+        
         this._initListener();
     };
     
     this.unload = function(){
-       _oButton.off("mousedown", _oListenerDown);
-       _oButton.off("pressup" , _oListenerUp); 
+       _oButton.off("mousedown",_aListeners[0]);
+       _oButton.off("pressup",_aListeners[1]);
        
-       _oParentContainer.removeChild(_oButton);
+       s_oStage.removeChild(_oButton);
     };
     
     this.setVisible = function(bVisible){
         _oButton.visible = bVisible;
     };
     
-    this.setAlign = function(szAlign){
-        _oText.textAlign = szAlign;
-    };
-    
-    this.setTextX = function(iX){
-        _oText.x = iX;
-    };
-    
-    this.setScale = function(iScale){
-        _oButton.scaleX = _oButton.scaleY = iScale;
-        _iCurScale = iScale;
-    };
-    
     this.enable = function(){
         _bDisable = false;
+		
+	_oButtonBg.filters = [];
 
+        _oButtonBg.cache(0,0,_iWidth,_iHeight);
     };
     
     this.disable = function(){
         _bDisable = true;
-
+		
+	var matrix = new createjs.ColorMatrix().adjustSaturation(-100).adjustBrightness(40);
+        _oButtonBg.filters = [
+                                new createjs.ColorMatrixFilter(matrix)
+                             ];
+        _oButtonBg.cache(0,0,_iWidth,_iHeight);
     };
     
     this._initListener = function(){
-       _oListenerDown = _oButton.on("mousedown", this.buttonDown);
-       _oListenerUp = _oButton.on("pressup" , this.buttonRelease);      
+       _aListeners = new Array();
+        _aListeners[0] = _oButton.on("mousedown", this.buttonDown);
+       _aListeners[1] = _oButton.on("pressup" , this.buttonRelease);      
     };
     
     this.addEventListener = function( iEvent,cbCompleted, cbOwner ){
@@ -106,10 +104,10 @@ function CTextButton(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,oParent
             return;
         }
         
-        playSound("press_but",1,false);
+        playSound("click",1,false);
         
-        _oButton.scaleX = _iCurScale;
-        _oButton.scaleY = _iCurScale;
+        _oButton.scaleX = 1;
+        _oButton.scaleY = 1;
 
         if(_aCbCompleted[ON_MOUSE_UP]){
             _aCbCompleted[ON_MOUSE_UP].call(_aCbOwner[ON_MOUSE_UP],_oParams);
@@ -120,8 +118,8 @@ function CTextButton(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,oParent
         if(_bDisable){
             return;
         }
-        _oButton.scaleX = _iCurScale*0.9;
-        _oButton.scaleY = _iCurScale*0.9;
+        _oButton.scaleX = 0.9;
+        _oButton.scaleY = 0.9;
 
        if(_aCbCompleted[ON_MOUSE_DOWN]){
            _aCbCompleted[ON_MOUSE_DOWN].call(_aCbOwner[ON_MOUSE_DOWN]);
@@ -133,16 +131,9 @@ function CTextButton(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,oParent
          _oButton.y = iYPos;
     };
     
-    this.tweenPosition = function(iXPos,iYPos,iTime,iDelay,oEase,oCallback,oCallOwner){
-        createjs.Tween.get(_oButton).wait(iDelay).to({x:iXPos,y:iYPos}, iTime,oEase).call(function(){
-            if(oCallback !== undefined){
-                oCallback.call(oCallOwner);
-            }
-        }); 
-    };
-    
     this.changeText = function(szText){
-        _oText.refreshText(szText);
+        _oText.text = szText;
+        _oTextBack.text = szText;
     };
     
     this.setX = function(iXPos){
@@ -168,10 +159,9 @@ function CTextButton(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,oParent
     this.getSprite = function(){
         return _oButton;
     };
-    
-    this.getScale = function(){
-        return _oButton.scaleX;
-    };
 
-    this._init(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize);
+    this._init(iXPos,iYPos,oSprite,szText,szFont,szColor,iFontSize,bAttach);
+    
+    return this;
+    
 }
