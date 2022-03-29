@@ -1,106 +1,88 @@
-function CInterface(){
-    var _iIndexFicheSelected;
-    var _aFiches;
-    var _aHistoryRows;
-    
+function CInterface(iScore){
+    var _pStartPosAudio;
+    var _pStartPosExit;
+    var _pStartPosText;
+    var _pStartPosFullscreen;
+	
+    var _oLevelText;
+    var _oLevelTextOutline;
+    var _oScoreText;
+    var _oScoreTextOutline;
     var _oButExit;
+    var _oHitArea;
     var _oAudioToggle;
-    var _oTimeTextBack;
-    var _oTimeText;
-    var _oMoneyText;
-    var _oMsgTitle;
-    var _oMsgText;
-    var _oDisplayBg;
-    var _oSpinBut;
-    var _oClearLastBet;
-    var _oClearAllBet;
-    var _oBetFinalsBet;
-    var _oBetNeighbors;
-    var _oBetOrphelins;
-    var _oBetTier;
-    var _oBetVoisinsZero;
-    var _oRebetBut;
+    var _oEndPanel;
+    var _oNextLevelPanel;
+    var _oContainerText;
     var _oButFullscreen;
     var _fRequestFullScreen = null;
     var _fCancelFullScreen = null;
     
-    this._init = function(){
+    this._init = function(iScore){
+        _pStartPosText = {x:10,y:10};
         
-        _oMoneyText = new createjs.Text("","12px "+FONT1, "#fff");
-        _oMoneyText.textAlign = "center";
-        _oMoneyText.x = CANVAS_WIDTH - 56;
-        _oMoneyText.y = CANVAS_HEIGHT - 35;
-        s_oStage.addChild(_oMoneyText);
+        _oContainerText = new createjs.Container();
+        _oContainerText.x = _pStartPosText.x;
+        _oContainerText.y = _pStartPosText.y;
+        s_oStage.addChild(_oContainerText);
         
-        _oDisplayBg = createBitmap(s_oSpriteLibrary.getSprite('display_bg'));
-        _oDisplayBg.x = 235;
-        _oDisplayBg.y = 4;
-        s_oStage.addChild(_oDisplayBg);
+        _oScoreTextOutline = new CTLText(_oContainerText, 
+                    0, 0, 320, 32, 
+                    26, "left", "#008733", FONT_GAME, 1.1,
+                    0, 0,
+                    TEXT_SCORE +" "+iScore,
+                    true, true, false,
+                    false );
+        _oScoreTextOutline.setOutline(3);
+        
+        _oScoreText = new CTLText(_oContainerText, 
+                    0, 0, 320, 32, 
+                    26, "left", "#fff", FONT_GAME, 1.1,
+                    0, 0,
+                    TEXT_SCORE +" "+iScore,
+                    true, true, false,
+                    false );
+        
 
-        _oMsgTitle = new createjs.Text("","20px "+FONT2, "#ffde00");
-        _oMsgTitle.textAlign = "center";
-        _oMsgTitle.lineHeight = 20;
-        _oMsgTitle.x = _oDisplayBg.x + 160;
-        _oMsgTitle.y = _oDisplayBg.y + 8;
-        s_oStage.addChild(_oMsgTitle);
+        _oLevelTextOutline = new CTLText(_oContainerText, 
+                    0, 40, 320, 32, 
+                    22, "left", "#008733", FONT_GAME, 1.1,
+                    0, 0,
+                    TEXT_LEVEL +" "+s_iLastLevel,
+                    true, true, false,
+                    false );
+        _oLevelTextOutline.setOutline(3);            
+        
 
-        _oMsgText = new createjs.Text("","16px "+FONT2, "#ffde00");
-        _oMsgText.textAlign = "left";
-        _oMsgText.lineHeight = 14;
-        _oMsgText.x = _oDisplayBg.x + 120;
-        _oMsgText.y = _oDisplayBg.y + 60;
-        s_oStage.addChild(_oMsgText);
-        
-        _oSpinBut = new CGfxButton(575,221,s_oSpriteLibrary.getSprite('spin_but'));
-        _oSpinBut.setVisible(false);
-        _oSpinBut.addEventListener(ON_MOUSE_UP, this._onSpin, this);
+        _oLevelText = new CTLText(_oContainerText, 
+                    0, 40, 320, 32, 
+                    22, "left", "#fff", FONT_GAME, 1.1,
+                    0, 0,
+                    TEXT_LEVEL +" "+s_iLastLevel,
+                    true, true, false,
+                    false );
 
-        _oClearLastBet = new CTextButton(81,309,s_oSpriteLibrary.getSprite('but_game_bg'),TEXT_CLEAR_LAST_BET,FONT1,"#fff",14);
-        _oClearLastBet.addEventListener(ON_MOUSE_UP, this._onClearLastBet, this);
-        
-        _oClearAllBet = new CTextButton(81,342,s_oSpriteLibrary.getSprite('but_game_bg'),TEXT_CLEAR_ALL_BET,FONT1,"#fff",14);
-        _oClearAllBet.addEventListener(ON_MOUSE_UP, this._onClearAllBet, this);
-        
-        _oBetVoisinsZero= new CBetTextButton(81,447,s_oSpriteLibrary.getSprite('but_game_bg'), TEXT_VOISINS_ZERO,FONT1,"#fff",14,"oBetVoisinsZero");
-        _oBetVoisinsZero.addEventListener(ON_MOUSE_UP, this._onBetRelease, this);
-        
-        _oBetOrphelins = new CBetTextButton(81,515,s_oSpriteLibrary.getSprite('but_game_bg'),TEXT_ORPHELINS,FONT1,"#fff",14,"oBetOrphelins");
-        _oBetOrphelins.addEventListener(ON_MOUSE_UP, this._onBetRelease, this);
-        
-        _oBetTier = new CBetTextButton(81,481,s_oSpriteLibrary.getSprite('but_game_bg'),TEXT_TIER,FONT1,"#fff",14,"oBetTier");
-        _oBetTier.addEventListener(ON_MOUSE_UP, this._onBetRelease, this);
-        
-        _oBetFinalsBet = new CTextButton(81,582,s_oSpriteLibrary.getSprite('but_game_bg'),TEXT_FINALSBET,FONT1,"#fff",14);
-        _oBetFinalsBet.addEventListener(ON_MOUSE_UP, this._onFinalBetShow, this);
-        
-        _oBetNeighbors = new CTextButton(81,549,s_oSpriteLibrary.getSprite('but_game_bg'),TEXT_NEIGHBORS,FONT1,"#fff",14);
-        _oBetNeighbors.addEventListener(ON_MOUSE_UP, this._onNeighborsPanel, this);
-        
-        _oRebetBut = new CTextButton(692,538,s_oSpriteLibrary.getSprite('but_game_small'),TEXT_REBET,FONT1,"#fff",14);
-        _oRebetBut.disable();
-        _oRebetBut.addEventListener(ON_MOUSE_UP, this._onRebet, this);
-        
-        this._initFichesBut();
-        this.disableBetFiches();
-	this._initNumExtracted();
-        
-        _iIndexFicheSelected=0;
-        _aFiches[_iIndexFicheSelected].select();
+        var oParent = this;
+	_oHitArea = createBitmap(s_oSpriteLibrary.getSprite('hit_area'));
+        s_oStage.addChild(_oHitArea);
+	_oHitArea.on("pressup",function(evt){oParent._onTapScreen(evt.stageX,evt.stageY)}); 
 
         var oSprite = s_oSpriteLibrary.getSprite('but_exit');
-        _oButExit = new CGfxButton((oSprite.width/2) + 5,(oSprite.height/2) + 5,oSprite,true);
+	_pStartPosExit = {x:CANVAS_WIDTH - (oSprite.width/2) ,y:(oSprite.height/2) +4};
+        _oButExit = new CGfxButton(_pStartPosExit.x,_pStartPosExit.y,oSprite,s_oStage);
         _oButExit.addEventListener(ON_MOUSE_UP, this._onExit, this);
-        
-        var pStartPosFullscreen = {};
+
         if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
-            _oAudioToggle = new CToggle(_oButExit.getX() + oSprite.width + 5,(oSprite.height/2) + 4,s_oSpriteLibrary.getSprite('audio_icon'));
+            _pStartPosAudio = {x:_pStartPosExit.x - oSprite.width,y:(oSprite.height/2) + 4}
+            var oSprite = s_oSpriteLibrary.getSprite('audio_icon');
+            _oAudioToggle = new CToggle(_pStartPosAudio.x,_pStartPosAudio.y,oSprite,s_bAudioActive);
             _oAudioToggle.addEventListener(ON_MOUSE_UP, this._onAudioToggle, this);
             
-            pStartPosFullscreen = {x:_oAudioToggle.getX() + oSprite.width +5,y:_oAudioToggle.getY()};
+            _pStartPosFullscreen = {x: _pStartPosAudio.x - oSprite.width/2,y:_pStartPosAudio.y};
         }else{
-            pStartPosFullscreen = {x:_oButExit.getX() + oSprite.width + 5,y:(oSprite.height/2) + 4};
+            _pStartPosFullscreen = {x:_oButExit.getX() - oSprite.width,y:(oSprite.height/2) + 4}
         }
-        
+
         var doc = window.document;
         var docEl = doc.documentElement;
         _fRequestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
@@ -110,231 +92,95 @@ function CInterface(){
             _fRequestFullScreen = false;
         }
         
-        if (_fRequestFullScreen && screenfull.enabled){
+        if (_fRequestFullScreen && screenfull.isEnabled){
             oSprite = s_oSpriteLibrary.getSprite('but_fullscreen');
-            _oButFullscreen = new CToggle(pStartPosFullscreen.x,pStartPosFullscreen.y,oSprite,s_bFullscreen,true);
+            
+
+            _oButFullscreen = new CToggle(_pStartPosFullscreen.x,_pStartPosFullscreen.y,oSprite,s_bFullscreen,s_oStage);
             _oButFullscreen.addEventListener(ON_MOUSE_UP, this._onFullscreenRelease, this);
         }
+        
+        _oNextLevelPanel = new CNextLevel();
+        _oEndPanel = new CEndPanel(s_oSpriteLibrary.getSprite('msg_box'));
+
+	this.refreshButtonPos(s_iOffsetX,s_iOffsetY);		
     };
     
     this.unload = function(){
         _oButExit.unload();
-	if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
+        _oButExit = null;
+
+        if(DISABLE_SOUND_MOBILE === false){
             _oAudioToggle.unload();
+            _oAudioToggle = null;
         }
-        _oSpinBut.unload();
-        _oClearLastBet.unload();
-        _oClearAllBet.unload();
-        _oBetFinalsBet.unload();
-        _oBetNeighbors.unload();
-        _oBetOrphelins.unload();
-        _oBetTier.unload();
-        _oBetVoisinsZero.unload();
-        _oRebetBut.unload();
-        if (_fRequestFullScreen && screenfull.enabled){
+        
+        if (_fRequestFullScreen && screenfull.isEnabled){
             _oButFullscreen.unload();
         }
-    };
-    
-    this.enableBetFiches = function(){
-        for(var i=0;i<NUM_FICHE_VALUES;i++){
-            _aFiches[i].enable();
-        }
-        _oClearLastBet.enable();
-        _oClearAllBet.enable();
-
-        _oBetFinalsBet.enable();
-        _oBetNeighbors.enable();
-        _oBetOrphelins.enable();
-        _oBetTier.enable();
-        _oBetVoisinsZero.enable();
-    };
-    
-    this.disableBetFiches = function(){
-        for(var i=0;i<NUM_FICHE_VALUES;i++){
-            _aFiches[i].disable();
-        }
-        _oClearLastBet.disable();
-        _oClearAllBet.disable();
-
-        _oBetFinalsBet.disable();
-        _oBetNeighbors.disable();
-        _oBetOrphelins.disable();
-        _oBetTier.disable();
-        _oBetVoisinsZero.disable();
-        _oRebetBut.disable();
-    };
-    
-    this.enableRebet = function(){
-        _oRebetBut.enable();
-    };
-    
-    this.disableRebet = function(){
-        _oRebetBut.disable();
-    };
-
-    this._initNumExtracted = function(){
-        _aHistoryRows = new Array();
         
-        var iXPos = 672;
-        var iYPos = 11;
-        for(var i=0;i<12;i++){
-            var oRow = new CHistoryRow(iXPos,iYPos);
-            _aHistoryRows[i] = oRow;
-            iYPos += 22;
+        s_oStage.removeAllChildren();
+	s_oInterface = null;
+    };
+	
+    this.refreshButtonPos = function(iNewX,iNewY){
+        _oContainerText.x = _pStartPosText.x + iNewX;
+        _oContainerText.y = _pStartPosText.y + iNewY;
+
+        
+        _oButExit.setPosition(_pStartPosExit.x - iNewX,_pStartPosExit.y + iNewY);
+        if(DISABLE_SOUND_MOBILE === false || s_bMobile === false){
+                _oAudioToggle.setPosition(_pStartPosAudio.x - iNewX,iNewY + _pStartPosAudio.y);
+        }
+        if (_fRequestFullScreen && screenfull.isEnabled){
+            _oButFullscreen.setPosition(_pStartPosFullscreen.x - iNewX,_pStartPosFullscreen.y + iNewY);
         }
     };
     
-    this.deselectAllFiches = function(){
-         for(var i=0;i<NUM_FICHES;i++){
-             _aFiches[i].deselect();
-         }
+    this._onTapScreen = function(iX,iY){
+        s_oGame.onShot(iX,iY);
     };
     
-    this.enableSpin = function(bEnable){
-        _oSpinBut.setVisible(bEnable);
+    this.gameOver = function(iScore){
+        _oEndPanel.show(iScore,false);
     };
     
-    this._initFichesBut = function(){
-        //SET FICHES BUTTON
-        var aPos = [{x:296,y:410},{x:324,y:434},{x:352,y:456},{x:381,y:477},{x:409,y:500},{x:438,y:521}];
-        _aFiches = new Array();
-        for(var i=0;i<NUM_FICHES;i++){
-            var oSprite = s_oSpriteLibrary.getSprite('fiche_'+i);
-            _aFiches[i] = new CFicheBut(aPos[i].x,aPos[i].y,oSprite);
-            _aFiches[i].addEventListenerWithParams(ON_MOUSE_UP, this._onFicheSelected, this,[i]);
-        }
+    this.win = function(iScore){
+        _oEndPanel.show(iScore,true);
     };
     
-    this.refreshTime = function(iTime){
-        var szTime = formatTime(iTime);
-        _oTimeText.text =  szTime;
-        _oTimeTextBack.text = szTime;
-    };
-
-    this.refreshMoney = function(iMoney){
-        _oMoneyText.text = TEXT_MONEY +"\n"+iMoney+"$";
+    this.nextLevel = function(iLevel,iScore){
+        _oNextLevelPanel.show(iLevel,iScore);
     };
     
-    this.displayAction = function(szText1,szText2){
-        _oMsgTitle.text=szText1;
-        _oMsgText.text=szText2;
+    this.refreshScore = function(iScore){
+        _oScoreText.refreshText(TEXT_SCORE +" "+iScore);
+        _oScoreTextOutline.refreshText(TEXT_SCORE +" "+iScore);
     };
     
-    this.showWin = function(iWinAmount){
-        this.displayAction(TEXT_DISPLAY_MSG_PLAYER_WIN+"\n"+iWinAmount+"$");
-    };
-    
-    this.showLose = function(){
-        this.displayAction(TEXT_DISPLAY_MSG_PLAYER_LOSE);
-    };
-    
-    this.refreshNumExtracted = function(aNumExtracted){
-        var iLen=aNumExtracted.length-1;
-        //TAKE ONLY THE FIRST 12 NUMBERS EXTRACTED
-        var iLastNum=-1;
-
-        if(aNumExtracted.length>11){
-                iLastNum=iLen-12;
-        }
-
-        var iCurIndex=0;
-        for(var i=iLen;i>iLastNum;i--){
-            switch(s_oGameSettings.getColorNumber(aNumExtracted[i])){
-                case COLOR_BLACK:{
-                    _aHistoryRows[iCurIndex].showBlack(aNumExtracted[i]);
-                    break;
-                }
-                case COLOR_RED:{
-                    _aHistoryRows[iCurIndex].showRed(aNumExtracted[i]);
-                    break;
-                }
-                case COLOR_ZERO:{
-                    _aHistoryRows[iCurIndex].showGreen(aNumExtracted[i]);
-                    break;
-                }
-            }
-
-            iCurIndex++;
-        }
-
-
-    };
-    
-    this.gameOver = function(){
+    this.refreshLevel = function(iLevel){
+        _oLevelText.refreshText(TEXT_LEVEL + " " + iLevel);
+        _oLevelTextOutline.refreshText(TEXT_LEVEL + " " + iLevel);
         
     };
     
-    this._onBetRelease = function(oParams){
-        var aBets=oParams.numbers;
-        var iBetMult=oParams.bet_mult;
-        var iBetWin=oParams.bet_win;
-        if(aBets !== null){
-            s_oGame._onShowBetOnTable({button:oParams.name,numbers:aBets,bet_mult:iBetMult,bet_win:iBetWin,num_fiches:oParams.num_fiches},false);
-        }
-    };
-    
-    this._onFicheSelected = function(aParams){
-        playSound("fiche_select",1,false);
-        this.deselectAllFiches();
-        
-        var iFicheIndex=aParams[0];
-
-        for(var i=0;i<NUM_FICHE_VALUES;i++){
-            if(i === iFicheIndex){
-               _iIndexFicheSelected = i;
-            }
-        }
-    };
-    
-    this._onSpin = function(){
-            this.disableBetFiches();
-            this.enableSpin(false);
-            s_oGame.onSpin();    
-    };
-    
-    this._onClearLastBet = function(){
-        s_oGame.onClearLastBet();
-    };
-    
-    this._onClearAllBet = function(){
-        s_oGame.onClearAllBets();
-    };
-    
-    this._onFinalBetShow = function(){
-        s_oGame.onFinalBetShown();
-    };
-    
-    this._onNeighborsPanel = function(){
-        s_oGame.onOpenNeighbors();
-    };
-    
-    this._onRebet = function(){
-        _oRebetBut.disable();
-        s_oGame.onRebet();
-    };
-
     this._onExit = function(){
         s_oGame.onExit();  
     };
     
-    this.getCurFicheSelected = function(){
-        return _iIndexFicheSelected;
-    };
-    
     this._onAudioToggle = function(){
         Howler.mute(s_bAudioActive);
-		s_bAudioActive = !s_bAudioActive;
+	s_bAudioActive = !s_bAudioActive;
     };
     
     this.resetFullscreenBut = function(){
-	if (_fRequestFullScreen && screenfull.enabled){
+	if (_fRequestFullScreen && screenfull.isEnabled){
 		_oButFullscreen.setActive(s_bFullscreen);
 	}
     };
 
     this._onFullscreenRelease = function(){
-	if(s_bFullscreen) { 
+        if(s_bFullscreen) { 
 		_fCancelFullScreen.call(window.document);
 	}else{
 		_fRequestFullScreen.call(window.document.documentElement);
@@ -345,7 +191,7 @@ function CInterface(){
     
     s_oInterface = this;
     
-    this._init();
+    this._init(iScore);
     
     return this;
 }

@@ -3,9 +3,10 @@ root {
 }
 
 body{
-    background-color: #000;
+    background-color: #9a6600;
     background-repeat: repeat-x;
     background-position: top;   
+	font-family: 'Chewy', cursive;
 }
 
 *, *:before, *:after {
@@ -22,13 +23,13 @@ input, input:before, input:after {
     -moz-user-select: initial;
     -ms-user-select: initial;
     user-select: initial;
-} 
+}
 
 ::selection { background: transparent;color:inherit; }
 ::-moz-selection { background: transparent;color:inherit; }
 
 #canvas{
-    position: fixed; 
+    position: fixed;  
 }
 
 canvas {
@@ -54,35 +55,20 @@ canvas {
 }
 
 /***************FONTS*******************/
-
 .check-fonts{
                 position: fixed;
                 opacity:0;
 }
 
 .check-font-1{
-        font-family: 'arialbold';
-}
-.check-font-2{
-        font-family: 'Digital-7';
+        font-family: 'obelixproitalic';
 }
                 
 @font-face {
-	font-family: 'Digital-7';
-	src: url('Digital-7.eot?') format('eot'), 
-	     url('Digital-7.woff') format('woff'), 
-	     url('Digital-7.ttf')  format('truetype'),
-	     url('Digital-7.svg#Digital-7') format('svg');
-}
-
-@font-face {
-    font-family: 'arialbold';
-    src: url('arialbd-webfont.eot');
-    src: url('arialbd-webfont.eot?#iefix') format('embedded-opentype'),
-         url('arialbd-webfont.woff2') format('woff2'),
-         url('arialbd-webfont.woff') format('woff'),
-         url('arialbd-webfont.ttf') format('truetype'),
-         url('arialbd-webfont.svg#arialbold') format('svg');
+    font-family: 'obelixproitalic';
+    src: url('obelixproit-cyr-webfont.woff2') format('woff2'),
+         url('obelixproit-cyr-webfont.woff') format('woff'),
+         url('obelixproit-cyr-webfont.svg#obelixproitalic') format('svg');
     font-weight: normal;
     font-style: normal;
 

@@ -18,8 +18,8 @@ export default function Main() {
                     javaScriptCanOpenWindowsAutomatically={true}
                     allowsInlineMediaPlayback={true}
                 />
-                <BannerAd
-                    unitId='ca-app-pub-5425858352547326/5541120611'
+                {/* <BannerAd
+                    unitId='ca-app-pub-5425858352547326/1966753406'
                     size={BannerAdSize.FULL_BANNER}
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,
@@ -30,7 +30,7 @@ export default function Main() {
                     onAdFailedToLoad={(error) => {
                         console.error('Advert failed to load: ', error);
                     }}
-                />
+                /> */}
             </>
         );
     }
