@@ -77,7 +77,10 @@ const App: () => Node = () => {
   };
 
   return (
-    <AppView />
+    <>
+      <StatusBar hidden />
+      <AppView />
+    </>
   );
 };
 

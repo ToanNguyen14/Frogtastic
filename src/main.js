@@ -49,7 +49,7 @@ export default function Main() {
                 />
                 <BannerAd
                     unitId='ca-app-pub-5425858352547326/5541120611'
-                    size={BannerAdSize.FULL_BANNER}
+                    size={BannerAdSize.SMART_BANNER}
                     requestOptions={{
                         requestNonPersonalizedAdsOnly: true,
                     }}
