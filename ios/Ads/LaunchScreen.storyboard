@@ -16,8 +16,8 @@
                         <rect key="frame" x="0.0" y="0.0" width="428" height="926"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="bg_menu.jpg" translatesAutoresizingMaskIntoConstraints="NO" id="cDb-G8-qgx">
-                                <rect key="frame" x="-210" y="-53" width="849" height="1013"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="icon-256.png" translatesAutoresizingMaskIntoConstraints="NO" id="khL-ch-ejk">
+                                <rect key="frame" x="0.0" y="-34" width="428" height="926"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                             </imageView>
                         </subviews>
@@ -31,6 +31,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="bg_menu.jpg" width="960.21337890625" height="540.1199951171875"/>
+        <image name="icon-256.png" width="192" height="192"/>
     </resources>
 </document>
